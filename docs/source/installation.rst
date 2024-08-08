@@ -15,18 +15,18 @@ Installation
 GitHub
 ------
 
-Install the latest version of |fastphase|_ from `GitHub <https://github.com/QPG-MIT/fastphase>`_ using:
+Install the latest version of |fastphase|_ from `GitHub <https://github.com/slmsuite/fastphase>`_ using:
 
 .. code-block:: console
 
-    pip install git+https://github.com/QPG-MIT/fastphase
+    pip install git+https://github.com/slmsuite/fastphase
 
 One can also clone |fastphase|_ directly and add its directory to the Python path.
 *Remember to install the dependencies (next sections)*.
 
 .. code-block:: console
 
-    git clone https://github.com/QPG-MIT/fastphase
+    git clone https://github.com/slmsuite/fastphase
 
 Required Dependencies
 ---------------------
@@ -39,6 +39,7 @@ dependencies and thus are installed automatically if PyPi (``pip``) is used to i
 - `torch <https://scipy.org/>`_
 - `torchaudio <https://scipy.org/>`_
 - `torchvision <https://scipy.org/>`_
+- `pytorch-minimize <https://pytorch-minimize.readthedocs.io/en/latest/>`_
 
 One can also install these dependencies directly.
 
@@ -47,4 +48,4 @@ One can also install these dependencies directly.
     pip install -r requirements.txt
 
 .. |fastphase| replace:: :mod:`fastphase`
-.. _fastphase: https://github.com/QPG-MIT/fastphase
+.. _fastphase: https://github.com/slmsuite/fastphase

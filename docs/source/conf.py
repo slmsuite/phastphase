@@ -54,8 +54,8 @@ extensions = [
 ]
 
 extlinks = {
-    "issue": ("https://github.com/QPG-MIT/slmsuite/issues/%s", "GH"),
-    "pull": ("https://github.com/QPG-MIT/slmsuite/pull/%s", "PR"),
+    "issue": ("https://github.com/slmsuite/fastphase/issues/%s", "GH"),
+    "pull": ("https://github.com/slmsuite/fastphase/pull/%s", "PR"),
 }
 
 # Adapted from https://github.com/DisnakeDev/disnake/blob/7853da70b13fcd2978c39c0b7efa59b34d298186/docs/conf.py#L192
@@ -79,7 +79,7 @@ def linkcode_resolve(domain, info):
         return None
 
     path = f"{path}#L{lineno}-L{lineno + len(src) - 1}"
-    return f"https://github.com/QPG-MIT/slmsuite/blob/main/slmsuite/" + path
+    return f"https://github.com/slmsuite/fastphase/blob/main/fastphase/" + path
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["templates"]
@@ -148,18 +148,18 @@ html_theme_options = {
         "image_light": "static/slmsuite.svg",
         "image_dark": "static/slmsuite-dark.svg",
     },
-    # "show_prev_next": False,
+    "show_prev_next": True,
     "navbar_end": ["theme-switcher", "navbar-icon-links"], #, "search-field.html"
     "icon_links": [
-        # {
-        #     "name": "PyPI",
-        #     "url": "https://pypi.org/project/slmsuite/",
-        #     "icon": "fa-custom fa-pypi",
-        # },
         {
             "name": "GitHub",
-            "url": "https://github.com/QPG-MIT/fastphase/",
-            "icon": "fab fa-github-square",
+            "url": "https://github.com/slmsuite/fastphase/",
+            "icon": "fab fa-github",
+        },
+        {
+            "name": "PyPI",
+            "url": "https://pypi.org/project/fastphase/",
+            "icon": "fab fa-python",
         },
     ],
     "footer_start": ["copyright", "sphinx-version"],
@@ -194,7 +194,7 @@ def skip(app, what, name, obj, would_skip, options):
 
     return skip_
 
-examples_repo_owner = "QPG-MIT"
+examples_repo_owner = "slmsuite"
 examples_repo_name = "slmsuite-examples"
 # relative to this directory
 examples_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_examples")
