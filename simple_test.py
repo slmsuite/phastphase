@@ -2,7 +2,7 @@ import torch
 from torch.fft import fftn, ifftn, fft2,ifft2
 import numpy as np
 
-from fastphase import retrieve_phase
+from fastphaseretrieval import retrieve_phase
 
 
 if torch.cuda.is_available():
