@@ -45,7 +45,7 @@ def retrieve_phase(
 def _retrieve_phase(y_data: torch.Tensor, tight_support: List[int], loose_support: List[int], 
                         assume_twinning: bool = False,
                         far_field_offset: float = 1e-12,
-                        grad_tolerance: float = 1e-2,
+                        grad_tolerance: float = 1e-9,
                         adam_iters: int = 0, cost_reg: float = 1,
                         reference_point: List[int] = None, known_mags = None,
                         ) -> torch.Tensor:
