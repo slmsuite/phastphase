@@ -25,7 +25,7 @@ def retrieve_phase(
             Far-field intensity :math:`y`. This can be any array-like data e.g. :mod:`numpy`,
             but passing a :class:`torch.Tensor` is suggested to reduce allocation overhead.
         near_field_support : (int, int)
-            TODO. Is there some default value that could be given?
+            
         gpu : torch.device OR None OR bool
             Torch device to use in optimization.
             If ``None`` or ``True``, constructs the current torch device, prioritizing CUDA and
@@ -36,7 +36,7 @@ def retrieve_phase(
 
             -   ``"assume_twinning"`` - bool
 
-                TODO
+                Flag indicating that image twinning will occur due to loose support. Causes the function to attempt to remove the extraneous twin image. 
 
             -   ``"far_field_offset"`` - float
 
@@ -44,24 +44,26 @@ def retrieve_phase(
 
             -   ``"grad_tolerance"`` - float:
 
-                Gradient tolerance for the Super-Newton optimization. Defaults to ``1e-9``.
+                Gradient tolerance for the Trust Region Optimization. Defaults to ``1e-9``.
 
             -   ``"adam_iters"`` - int
 
-                Number of iterations of the ``AdamW`` algorithm to run before Super-Newton.
+                Number of iterations of the ``AdamW`` algorithm to run before Trust Region Newton.
                 Defaults to 100.
 
             -   ``"cost_reg"``: float = 1,
 
-                TODO
+                Regularization parameter to remove the global phase ambiguity in the optimization landscape.  Defaults to ''1''. 
 
             -   ``"reference_point"``: (int, int) OR None
 
-                TODO
+                Location of brightest pixel in object (if known). Bypasses computation of winding number of the z-transform. 
 
             -   ``"known_mags"`` - array_like OR None
 
-                TODO
+                Optional near-field magnitude constraint to apply. 
+
+                
 
     Returns
     -------
@@ -107,7 +109,6 @@ def retrieve_phase(
 def _retrieve_phase(
         y_data: torch.Tensor,
         tight_support: List[int],
-        loose_support: List[int],           # TODO: unused?
         assume_twinning: bool = False,
         far_field_offset: float = 1e-12,
         grad_tolerance: float = 1e-9,
