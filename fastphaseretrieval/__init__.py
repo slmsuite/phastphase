@@ -163,10 +163,6 @@ def _retrieve_phase(
 
     x_final = result.x
 
-    if loss_lam_L2(x_final) > 1e-7:
-        x_final = x_final + .1*torch.randn_like(x_final)
-        result = torchmin.trustregion._minimize_trust_ncg(loss_lam_L2, x_final, gtol=grad_tolerance,disp=2, max_trust_radius = 1e3, initial_trust_radius=100)
-    x_final = result.x
     return torch.view_as_complex_copy(x_final)
 
 def bisection_winding_calc(shape, cepstrum, num_loops=100):
