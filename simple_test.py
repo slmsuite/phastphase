@@ -13,13 +13,13 @@ N = 2**p    #number of pixels in 1 dimension
 x = torch.randn((N,N),dtype=torch.cdouble, device = tensor_device)
 
 d = 1
-x[d,d] =  2*N
+x[d,d] =  .9*N
 x_else = x.clone().detach()
 x_else[d,d] = 0
 print(f'Proportion of first element to 1-norm of rest of object: {x[d,d]/torch.linalg.vector_norm(x_else, ord = 2)}')
 y = torch.square(torch.abs(fftn(x,(overs*N+1, overs*N+1), norm = 'ortho')))
 x_in = x
 x_mags=torch.abs(x).clone()
-x_out = retrieve_phase(y, [N,N], [N,N])
+x_out = retrieve_phase(y, [N,N])
 
 print(torch.linalg.norm(x_out - x_in)/torch.linalg.norm(x_in))
