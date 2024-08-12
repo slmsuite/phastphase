@@ -29,9 +29,9 @@ for module_path in module_paths:
 
 # -- Project information -----------------------------------------------------
 
-project = "fastphase"
-copyright = "2024, fastphase Developers"        # Cole TODO
-author = "fastphase Developers"
+project = "fastphaseretrieval"
+copyright = "2024, fastphaseretrieval Developers"        # Cole TODO
+author = "fastphaseretrieval Developers"
 release = "0.0.1"
 
 # -- General configuration ---------------------------------------------------
@@ -54,8 +54,8 @@ extensions = [
 ]
 
 extlinks = {
-    "issue": ("https://github.com/slmsuite/fastphase/issues/%s", "GH"),
-    "pull": ("https://github.com/slmsuite/fastphase/pull/%s", "PR"),
+    "issue": ("https://github.com/slmsuite/fastphaseretrieval/issues/%s", "GH"),
+    "pull": ("https://github.com/slmsuite/fastphaseretrieval/pull/%s", "PR"),
 }
 
 # Adapted from https://github.com/DisnakeDev/disnake/blob/7853da70b13fcd2978c39c0b7efa59b34d298186/docs/conf.py#L192
@@ -79,7 +79,7 @@ def linkcode_resolve(domain, info):
         return None
 
     path = f"{path}#L{lineno}-L{lineno + len(src) - 1}"
-    return f"https://github.com/slmsuite/fastphase/blob/main/fastphase/" + path
+    return f"https://github.com/slmsuite/fastphaseretrieval/blob/main/fastphaseretrieval/" + path
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["templates"]
@@ -153,12 +153,12 @@ html_theme_options = {
     "icon_links": [
         {
             "name": "GitHub",
-            "url": "https://github.com/slmsuite/fastphase/",
+            "url": "https://github.com/slmsuite/fastphaseretrieval/",
             "icon": "fab fa-github",
         },
         {
             "name": "PyPI",
-            "url": "https://pypi.org/project/fastphase/",
+            "url": "https://pypi.org/project/fastphaseretrieval/",
             "icon": "fab fa-python",
         },
     ],

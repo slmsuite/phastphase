@@ -1,16 +1,13 @@
-fastphase
+fastphaseretrieval
 =========
 
-|fastphase|_ solves the phase retrieval problem:
+|fastphaseretrieval|_ solves the phase retrieval problem.
 
-   Given a 2D farfield amplitude :math:`|y|`, what is the best fit complex 2D nearfield :math:`x`?
+TODO: image intro.
 
-   .. math::
-      x = \text{retreive}\left(|y|\right), \,\,\, \text{ where } y \equiv \mathcal{F}(x).
+This functionality is available under :meth:`fastphaseretrieval.retrieve_phase()`. TODO
 
-This functionality is available under :meth:`fastphase.retrieve_phase()`. TODO
-
-.. autofunction:: fastphase.retrieve_phase
+.. autofunction:: fastphaseretrieval.retrieve_phase
 
 .. toctree::
    :maxdepth: 2
@@ -20,5 +17,5 @@ This functionality is available under :meth:`fastphase.retrieve_phase()`. TODO
    examples
    api
 
-.. |fastphase| replace:: :mod:`fastphase`
-.. _fastphase: https://github.com/slmsuite/fastphase
+.. |fastphaseretrieval| replace:: :mod:`fastphaseretrieval`
+.. _fastphaseretrieval: https://github.com/slmsuite/fastphaseretrieval

@@ -6,32 +6,32 @@ Installation
 .. PyPi
 .. ----
 
-.. Install the stable version of |fastphase|_ from `PyPi <https://pypi.org/project/fastphase/>`_ using:
+.. Install the stable version of |fastphaseretrieval|_ from `PyPi <https://pypi.org/project/fastphaseretrieval/>`_ using:
 
 .. .. code-block:: console
 
-..     pip install fastphase
+..     pip install fastphaseretrieval
 
 GitHub
 ------
 
-Install the latest version of |fastphase|_ from `GitHub <https://github.com/slmsuite/fastphase>`_ using:
+Install the latest version of |fastphaseretrieval|_ from `GitHub <https://github.com/slmsuite/fastphaseretrieval>`_ using:
 
 .. code-block:: console
 
-    pip install git+https://github.com/slmsuite/fastphase
+    pip install git+https://github.com/slmsuite/fastphaseretrieval
 
-One can also clone |fastphase|_ directly and add its directory to the Python path.
+One can also clone |fastphaseretrieval|_ directly and add its directory to the Python path.
 *Remember to install the dependencies (next sections)*.
 
 .. code-block:: console
 
-    git clone https://github.com/slmsuite/fastphase
+    git clone https://github.com/slmsuite/fastphaseretrieval
 
 Required Dependencies
 ---------------------
 
-The following python packages are necessary to run |fastphase|_. These are listed as PyPi
+The following python packages are necessary to run |fastphaseretrieval|_. These are listed as PyPi
 dependencies and thus are installed automatically if PyPi (``pip``) is used to install.
 
 - `python <https://www.python.org/>`_
@@ -47,5 +47,5 @@ One can also install these dependencies directly.
 
     pip install -r requirements.txt
 
-.. |fastphase| replace:: :mod:`fastphase`
-.. _fastphase: https://github.com/slmsuite/fastphase
+.. |fastphaseretrieval| replace:: :mod:`fastphaseretrieval`
+.. _fastphaseretrieval: https://github.com/slmsuite/fastphaseretrieval
