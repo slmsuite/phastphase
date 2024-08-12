@@ -1,9 +1,7 @@
 import torch
 from torch.fft import fftn, ifftn
 import torchmin
-
-
-from typing import List
+from tqdm import tqdm
 
 import numpy as np
 
@@ -17,6 +15,7 @@ def retrieve_phase(
         farfield_data,
         nearfield_support_shape=None,
         device=None,
+        verbose=False,
         **kwargs
     ):
     r"""
@@ -45,6 +44,8 @@ def retrieve_phase(
             If ``None`` or ``True``, constructs the current torch device,
             prioritizing CUDA and falling back to the CPU.
             If ``False``, the CPU is forced.
+        verbose : bool
+            Whether to use :mod:`tqdm` progress bars and print statements.
         **kwargs
             Additional flags to hone retrieval:
 
@@ -116,12 +117,18 @@ def retrieve_phase(
             torch_device = torch.device('cpu')
 
         # as_tensor uses the same memory, including the cupy/GPU case, if possible based on the device.
-        farfield_torch = torch.as_tensor(farfield_data, device=torch_device)
+        try:
+            farfield_torch = torch.as_tensor(farfield_data, device=torch_device)
+        except:
+            # torch doesn't support some numpy features such as negative slides, so
+            # we fallback to copying the memory.
+            farfield_torch = torch.as_tensor(farfield_data.copy(), device=torch_device)
 
     # Wrap the actual phase retrieval functions.
     retrieved_object = _retrieve_phase(
         farfield_torch,
         nearfield_support_shape,
+        verbose,
         **kwargs
     )
 
@@ -134,6 +141,7 @@ def retrieve_phase(
 def _retrieve_phase(
         y_data: torch.Tensor,
         tight_support,
+        verbose : bool = False,
         assume_twinning: bool = False,
         farfield_offset: float = 1e-12,
         grad_tolerance: float = 1e-9,
@@ -152,12 +160,14 @@ def _retrieve_phase(
     y = torch.add(y_data, farfield_offset)
     cepstrum = ifftn(torch.log(y))
 
-    # Determine the center of the cepstrum.
+    # Parse the support and determine the center of the cepstrum.
+    if tight_support is None:
+        tight_support = (y.shape[0] // 2, y.shape[1] // 2)
     if reference_point is not None:
         [wind_1, wind_2] = reference_point
     else:
         [wind_1, wind_2] = bisection_winding_calc(tight_support, cepstrum.numpy(force=True))
-        print(f'Calculated reference location is: {[wind_1,wind_2]}')
+        if verbose: print(f'Calculated reference location is: {[wind_1,wind_2]}')
 
     # Shift the data based upon the found center.
     mask = torch.zeros_like(cepstrum)
@@ -206,7 +216,7 @@ def _retrieve_phase(
 
     return torch.view_as_complex_copy(x_final)
 
-def bisection_winding_calc(shape, cepstrum, num_loops=100):
+def bisection_winding_calc(shape, cepstrum, num_loops=100, verbose=False):
     #shape : tight bounding box for object
     #cepstum: ndarray of cepstrum
     #threshbounds, tuple of (high,low)
@@ -217,7 +227,9 @@ def bisection_winding_calc(shape, cepstrum, num_loops=100):
     primary_orthant = np.abs(cepstrum[0:n,0:m])
     thresh_high = thresh_bounds[0]
     thresh_low = thresh_bounds[1]
-    for _ in range(num_loops):
+    iterator = range(num_loops)
+    if verbose: iterator = tqdm(iterator, desc="X winding")
+    for _ in iterator:
         threshhold = (thresh_high+thresh_low)/2.
         height = (
             np.where(np.heaviside(offdiagorth-threshhold,0)[:,-m:-m//2+1])[0].max(initial=0) +
@@ -236,7 +248,9 @@ def bisection_winding_calc(shape, cepstrum, num_loops=100):
     offdiagorth = np.abs(cepstrum[-n:,0:m//2+1])
     thresh_high = thresh_bounds[0]
     thresh_low = thresh_bounds[1]
-    for _ in range(num_loops):
+    iterator = range(num_loops)
+    if verbose: iterator = tqdm(iterator, desc="Y winding")
+    for _ in iterator:
         threshhold = (thresh_high+thresh_low)/2.
         width = (
             np.where(np.heaviside(offdiagorth-threshhold,0)[-n:-n//2+1,0:m])[1].max(initial=0) +
