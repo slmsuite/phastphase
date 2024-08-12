@@ -23,15 +23,16 @@ import requests
 module_paths = [
     os.path.abspath("../.."),
     os.path.abspath("../../slmsuite"),
+    os.path.abspath("../../phasefast"),
     ]
 for module_path in module_paths:
     sys.path.insert(0, module_path)
 
 # -- Project information -----------------------------------------------------
 
-project = "fastphaseretrieval"
-copyright = "2024, fastphaseretrieval Developers"        # Cole TODO
-author = "fastphaseretrieval Developers"
+project = "phasefast"
+copyright = "2024, phasefast Developers"        # Cole TODO
+author = "phasefast Developers"
 release = "0.0.1"
 
 # -- General configuration ---------------------------------------------------
@@ -54,8 +55,8 @@ extensions = [
 ]
 
 extlinks = {
-    "issue": ("https://github.com/slmsuite/fastphaseretrieval/issues/%s", "GH"),
-    "pull": ("https://github.com/slmsuite/fastphaseretrieval/pull/%s", "PR"),
+    "issue": ("https://github.com/slmsuite/phasefast/issues/%s", "GH"),
+    "pull": ("https://github.com/slmsuite/phasefast/pull/%s", "PR"),
 }
 
 # Adapted from https://github.com/DisnakeDev/disnake/blob/7853da70b13fcd2978c39c0b7efa59b34d298186/docs/conf.py#L192
@@ -79,7 +80,7 @@ def linkcode_resolve(domain, info):
         return None
 
     path = f"{path}#L{lineno}-L{lineno + len(src) - 1}"
-    return f"https://github.com/slmsuite/fastphaseretrieval/blob/main/fastphaseretrieval/" + path
+    return f"https://github.com/slmsuite/phasefast/blob/main/phasefast/" + path
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["templates"]
@@ -137,7 +138,7 @@ html_last_updated_fmt = "%b %d, %Y"
 
 # Add a logo
 # html_theme_options = {"logo_only": True}
-html_logo = "static/slmsuite.svg"
+html_logo = "static/phasefast.svg"
 
 # Add a favicon
 html_favicon = "static/slmsuite-notext-32x32.ico"
@@ -145,20 +146,20 @@ html_favicon = "static/slmsuite-notext-32x32.ico"
 html_theme = "pydata_sphinx_theme"
 html_theme_options = {
     "logo": {
-        "image_light": "static/slmsuite.svg",
-        "image_dark": "static/slmsuite-dark.svg",
+        "image_light": "static/phasefast.svg",
+        "image_dark": "static/phasefast-dark.svg",
     },
     "show_prev_next": True,
     "navbar_end": ["theme-switcher", "navbar-icon-links"], #, "search-field.html"
     "icon_links": [
         {
             "name": "GitHub",
-            "url": "https://github.com/slmsuite/fastphaseretrieval/",
+            "url": "https://github.com/slmsuite/phasefast/",
             "icon": "fab fa-github",
         },
         {
             "name": "PyPI",
-            "url": "https://pypi.org/project/fastphaseretrieval/",
+            "url": "https://pypi.org/project/phasefast/",
             "icon": "fab fa-python",
         },
     ],

@@ -1,13 +1,13 @@
-fastphaseretrieval
+phasefast
 =========
 
-|fastphaseretrieval|_ solves the phase retrieval problem.
+|phasefast|_ solves the phase retrieval problem.
 
 TODO: image intro.
 
-This functionality is available under :meth:`fastphaseretrieval.retrieve_phase()`. TODO
+This functionality is available under :meth:`phasefast.retrieve()`. TODO
 
-.. autofunction:: fastphaseretrieval.retrieve_phase
+.. autofunction:: phasefast.retrieve
 
 .. toctree::
    :maxdepth: 2
@@ -17,5 +17,5 @@ This functionality is available under :meth:`fastphaseretrieval.retrieve_phase()
    examples
    api
 
-.. |fastphaseretrieval| replace:: :mod:`fastphaseretrieval`
-.. _fastphaseretrieval: https://github.com/slmsuite/fastphaseretrieval
+.. |phasefast| replace:: :mod:`phasefast`
+.. _phasefast: https://github.com/slmsuite/phasefast

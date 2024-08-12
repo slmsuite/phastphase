@@ -2,7 +2,7 @@ import torch
 from torch.fft import fftn, ifftn, fft2,ifft2
 import numpy as np
 
-from fastphaseretrieval import retrieve_phase
+from phasefast import retrieve
 
 
 if torch.cuda.is_available():
@@ -20,6 +20,6 @@ print(f'Proportion of first element to 1-norm of rest of object: {x[d,d]/torch.l
 y = torch.square(torch.abs(fftn(x,(overs*N+1, overs*N+1), norm = 'ortho')))
 x_in = x
 x_mags=torch.abs(x).clone()
-x_out = retrieve_phase(y, [N,N])
+x_out = retrieve(y, [N,N])
 
 print(torch.linalg.norm(x_out - x_in)/torch.linalg.norm(x_in))

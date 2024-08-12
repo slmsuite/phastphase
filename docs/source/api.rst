@@ -2,19 +2,22 @@
 API Reference
 *************
 
-This page provides an auto-generated summary of the internals of |fastphaseretrieval|_'s API
-outside of the :meth:`~fastphaseretrieval.retrieve()` function.
+This page provides an auto-generated summary of the internals of |phasefast|_'s API
+outside of the :meth:`~phasefast.retrieve()` function.
 The general user should not need to look at these internals.
-You can find the source on `GitHub <https://github.com/slmsuite/fastphaseretrieval>`_.
+You can find the source on `GitHub <https://github.com/slmsuite/phasefast>`_.
 
-Self-contained algorithms used for steps of retrieval are partially separated into their
-own files.
-
-.. currentmodule:: fastphaseretrieval
+.. currentmodule:: phasefast
 .. autosummary::
    :toctree: _autosummary
-   :template: custom-module-template.rst
+   :template: custom-method-template.rst
    :recursive:
 
-.. |fastphaseretrieval| replace:: :mod:`fastphaseretrieval`
-.. _fastphase: https://github.com/slmsuite/fastphaseretrieval
+   retrieve
+   retrieve_
+   bisection_winding_calc
+   SOS_loss
+   SOS_loss2
+
+.. |phasefast| replace:: :mod:`phasefast`
+.. _phasefast: https://github.com/slmsuite/phasefast

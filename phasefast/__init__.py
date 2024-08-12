@@ -7,15 +7,9 @@ import numpy as np
 
 __version__ = '0.0.1'
 
-    #   This finds a best-fit complex nearfield :math:`x`
-    #   given a farfield intensity :math:`Y \approx |y|^2`,
-    #   where :math:`y = \mathcal{F}\{x\}`.
-
-def retrieve_phase(
+def retrieve(
         farfield_data,
         nearfield_support_shape=None,
-        device=None,
-        verbose=False,
         **kwargs
     ):
     r"""
@@ -29,72 +23,28 @@ def retrieve_phase(
 
     Parameters
     ----------
-        farfield_data : torch.Tensor OR array_like
-            Farfield intensity :math:`Y`: the 2D image data to retrieve upon.
-            This can be any array-like data e.g. :mod:`numpy`,
-            but passing a :class:`torch.Tensor` is suggested to reduce allocation overhead.
-        nearfield_support_shape : (int, int) OR None
-            The 2D shape of the desired nearfield, the result to retrieve.
-            This shape must be smaller than the shape of the farfield
-            for the problem to not be underconstrained.
-            For best results, the shape should be significantly smaller.
-            If ``None``, this is set to half the height and width of the shape of ``farfield_data``.
-        device : torch.device OR bool OR None
-            Torch device to use in optimization.
-            If ``None`` or ``True``, constructs the current torch device,
-            prioritizing CUDA and falling back to the CPU.
-            If ``False``, the CPU is forced.
-        verbose : bool
-            Whether to use :mod:`tqdm` progress bars and print statements.
-        **kwargs
-            Additional flags to hone retrieval:
-
-            -   ``"assume_twinning"`` - bool
-
-                Flag indicating that image twinning will occur due to loose support.
-                Causes the function to attempt to remove the extraneous twin image.
-
-            -   ``"farfield_offset"`` - float
-
-                Regularization if :math:`Y` has zeros. Defaults to ``1e-12``.
-
-            -   ``"adam_iters"`` - int
-
-                Number of iterations of the ``AdamW`` algorithm to run before
-                Trust Region Super-Newton optimization.
-                Defaults to 100.
-
-            -   ``"grad_tolerance"`` - float
-
-                Gradient tolerance for the Trust Region Super-Newton optimization. Defaults to ``1e-9``.
-
-            -   ``"cost_reg"`` - float
-
-                Regularization parameter to remove the global phase ambiguity in the optimization landscape.  Defaults to ''1''.
-
-            -   ``"reference_point"`` - (int, int) OR None
-
-                Location of brightest pixel in object (if known) in :math:`(p_y, p_x)` form.
-                Otherwise if ``None``, the winding number of the :math:`z`-transform is used to compute a guess.
-
-            -   ``"known_nearfield_amp"`` - array_like OR None
-
-                Optional nearfield amplitude constraint to apply.
-                Should be the same shape as ``nearfield_support_shape``.
+    farfield_data : torch.Tensor OR numpy.ndarray OR cupy.ndarray OR array_like
+        Farfield intensity :math:`Y`: the 2D image data to retrieve upon.
+    nearfield_support_shape : (int, int) OR None
+        The 2D shape of the desired nearfield, the result to retrieve.
+        This shape must be smaller than the shape of the farfield
+        for the phase retrieval problem to not be underconstrained.
+        For best results, the shape should be significantly smaller.
+        If ``None``, this is set to half the height and width of the shape of ``farfield_data``.
+    **kwargs
+        Additional flags to hone retrieval.
+        These flags are documented in :meth:`~phasefast.retrieve_()`.
 
     Returns
     -------
-        nearfield_retrieved : torch.Tensor OR numpy.ndarray OR cupy.ndarray
+    nearfield_retrieved : torch.Tensor OR numpy.ndarray OR cupy.ndarray
 
-            Recovered complex object :math:`x` which is a best fit for :math:`|\mathcal{F}\{x\}|^2 \approx Y`.
+        Recovered complex object :math:`x` which is a best fit for :math:`|\mathcal{F}\{x\}|^2 \approx Y`.
 
-            - If ``farfield_data`` is a ``torch.Tensor``, then a ``torch.Tensor`` is returned.
-            - If ``farfield_data`` is a ``cupy.ndarray`` and the ``device`` is not the CPU,
-              then a ``cupy.ndarray`` is returned.
-            - Otherwise, a ``numpy.array`` is returned.
-
-        TODO: as a small comment, the function is named ``_retrieve_phase``, but the complex
-        data is returned.
+        - If ``farfield_data`` is a ``torch.Tensor``, then a ``torch.Tensor`` is returned.
+        - If ``farfield_data`` is a ``cupy.ndarray`` and the ``device`` is not the CPU,
+          then a ``cupy.ndarray`` is returned.
+        - Otherwise, a ``numpy.array`` is returned.
     """
     # Determine the class of the data, and force it to be a torch tensor.
     xp = None   # numpy/cupy module; None ==> torch
@@ -108,6 +58,7 @@ def retrieve_phase(
             xp = np
 
         # Determine the device based on the value of device.
+        device = kwargs.pop("device", None)
         if torch.cuda.is_available() and (device is not False):
             if device is not None:
                 torch_device = device
@@ -125,10 +76,9 @@ def retrieve_phase(
             farfield_torch = torch.as_tensor(farfield_data.copy(), device=torch_device)
 
     # Wrap the actual phase retrieval functions.
-    retrieved_object = _retrieve_phase(
+    retrieved_object = retrieve_(
         farfield_torch,
         nearfield_support_shape,
-        verbose,
         **kwargs
     )
 
@@ -138,9 +88,9 @@ def retrieve_phase(
     else:
         return xp.asarray(retrieved_object)
 
-def _retrieve_phase(
-        y_data: torch.Tensor,
-        tight_support,
+def retrieve_(
+        farfield_data: torch.Tensor,
+        nearfield_support_shape,
         verbose : bool = False,
         assume_twinning: bool = False,
         farfield_offset: float = 1e-12,
@@ -150,17 +100,66 @@ def _retrieve_phase(
         reference_point = None,
         known_nearfield_amp = None,
     ) -> torch.Tensor:
-    """
-    Wrapped by :meth:`retrieve_phase` to make the many flags less intimidating.
-    See :meth:`retrieve_phase` for documentation. :meth:`retrieve_phase` also handles
-    conversion of numpy/torch/cupy
+    r"""
+    Wrapped by :meth:`retrieve` to make the many optional flags less intimidating
+    to the casual user.
+    See :meth:`retrieve` for high level documentation. :meth:`retrieve` also handles
+    conversion of :mod:`torch`/:mod:`numpy`/:mod:`cupy` data, while this function only
+    accepts :mod:`torch`.
+
+    Parameters
+    ----------
+    farfield_data : torch.Tensor
+        Farfield intensity :math:`Y`: the 2D image data to retrieve upon.
+        This can be any array-like data e.g. :mod:`numpy`,
+        but passing a :class:`torch.Tensor` is suggested to reduce allocation overhead.
+    nearfield_support_shape : (int, int) OR None
+        The 2D shape of the desired nearfield, the result to retrieve.
+        This shape must be smaller than the shape of the farfield
+        for the problem to not be underconstrained.
+        For best results, the shape should be significantly smaller.
+        If ``None``, this is set to half the height and width of the shape of ``farfield_data``.
+    device : torch.device OR bool OR None
+        Torch device to use in optimization.
+        If ``None`` or ``True``, constructs the current torch device,
+        prioritizing CUDA and falling back to the CPU.
+        If ``False``, the CPU is forced.
+        Defaults to ``None``.
+    verbose : bool
+        Whether to use :mod:`tqdm` progress bars and print statements.
+        Defaults to ``False``.
+    assume_twinning : bool
+        Flag indicating that image twinning will occur due to loose support.
+        Causes the function to attempt to remove the extraneous twin image.
+    farfield_offset : float
+        Regularization if :math:`Y` has zeros. Defaults to ``1e-12``.
+    adam_iters : int
+        Number of iterations of the ``AdamW`` algorithm to run before
+        Trust Region Super-Newton optimization.
+        Defaults to 100.
+    grad_tolerance : float
+        Gradient tolerance for the Trust Region Super-Newton optimization. Defaults to ``1e-9``.
+    cost_reg : float
+        Regularization parameter to remove the global phase ambiguity in the optimization landscape.  Defaults to ``1``.
+    reference_point : (int, int) OR None
+        Location of brightest pixel in object (if known) in :math:`(p_y, p_x)` form.
+        If ``None``, the winding number of the :math:`z`-transform is used to compute a guess.
+    known_nearfield_amp : array_like OR None
+        Optional nearfield amplitude constraint to apply.
+        Should be the same shape as ``nearfield_support_shape``.
+
+    Returns
+    -------
+    nearfield_retrieved : torch.Tensor
+        Recovered complex object :math:`x` which is a best fit for :math:`|\mathcal{F}\{x\}|^2 \approx Y`.
     """
     # Start by calculating the sepstrum of the image.
     # The farfield_offset is used to avoid log(0).
-    y = torch.add(y_data, farfield_offset)
+    y = torch.add(farfield_data, farfield_offset)
     cepstrum = ifftn(torch.log(y))
 
     # Parse the support and determine the center of the cepstrum.
+    tight_support = nearfield_support_shape
     if tight_support is None:
         tight_support = (y.shape[0] // 2, y.shape[1] // 2)
     if reference_point is not None:
@@ -217,9 +216,25 @@ def _retrieve_phase(
     return torch.view_as_complex_copy(x_final)
 
 def bisection_winding_calc(shape, cepstrum, num_loops=100, verbose=False):
-    #shape : tight bounding box for object
-    #cepstum: ndarray of cepstrum
-    #threshbounds, tuple of (high,low)
+    """
+    Calculates the ``reference_point`` by centering the winding.
+
+    Parameters
+    ----------
+    shape :
+        Tight bounding box for object, ``nearfield_support_shape``.
+    cepstum: ndarray
+        FFT of the log of the data.
+    num_loops : int
+        Number of iterations to optimize.
+    verbose : bool
+        Whether to print :mod:`tqdm` progress.
+
+    Returns
+    -------
+    reference_point : (int, int)
+        Centered reference point.
+    """
     n = shape[0]
     m = shape[1]
     thresh_bounds = (np.max(np.abs(cepstrum)), np.min(np.abs(cepstrum)))
@@ -269,20 +284,29 @@ def bisection_winding_calc(shape, cepstrum, num_loops=100, verbose=False):
     return (winding_num_1, winding_num_2)
 
 def SOS_loss(x: torch.Tensor, ysqrt: torch.Tensor,reg_lambda: float, ind1: int, ind2: int, known_nearfield_amp: torch.Tensor) -> torch.Tensor:
-    """Sums of Squares loss function for Phase Retrieval.
+    """Sums of Squares loss function with known nearfield.
 
     Includes regularization to break global phase symmetry.
 
+    Parameters
+    ----------
+    x : torch.Tensor
+        Near field object.
+    y : torch.Tensor
+        Far-field Intensities.
+    reg_lambda : float
+        Regularizer to fix phase.
+    ind1 : int
+        Reference point index 1.
+    ind2 : int
+        Reference point index 2.
+    known_nearfield_amp : torch.Tensor
+        Known amplitude to add as a constraint.
 
-    Args:
-        x (torch.Tensor): Near field object.
-        y (torch.Tensor): Far-field Intensities
-        reg_;a,bda (float): Regularizer to fix phase.
-        ind1 (int): index_1
-        ind2 (int): index_2
-
-    Returns:
-        torch.Tensor: Loss
+    Returns
+    -------
+    loss : torch.Tensor
+        Loss for this guess ``x``.
     """
     return (torch.square(torch.linalg.vector_norm(torch.addcdiv(ysqrt, torch.abs(torch.square(fftn(x, s=ysqrt.shape, norm='ortho'))), ysqrt, value=-1))))/8 \
             + reg_lambda*torch.square(torch.imag(x[ind1, ind2]))/2 + (torch.square(torch.linalg.vector_norm(torch.addcdiv(known_nearfield_amp,torch.square(torch.abs(x)),known_nearfield_amp,value=-1))))/8
@@ -292,15 +316,24 @@ def SOS_loss2(x: torch.Tensor, ysqrt: torch.Tensor,reg_lambda: float, ind1: int,
 
     Includes regularization to break global phase symmetry.
 
+    Parameters
+    ----------
+    x : torch.Tensor
+        Near field object.
+    y : torch.Tensor
+        Far-field Intensities.
+    reg_lambda : float
+        Regularizer to fix phase.
+    ind1 : int
+        Reference point index 1.
+    ind2 : int
+        Reference point index 2.
+    known_nearfield_amp : torch.Tensor
+        Known amplitude to add as a constraint.
 
-    Args:
-        x (torch.Tensor): Near field object.
-        y (torch.Tensor): Far-field Intensities
-        reg_;a,bda (float): Regularizer to fix phase.
-        ind1 (int): index_1
-        ind2 (int): index_2
-
-    Returns:
-        torch.Tensor: Loss
+    Returns
+    -------
+    loss : torch.Tensor
+        Loss for this guess ``x``.
     """
     return (torch.square(torch.linalg.vector_norm(torch.addcdiv(ysqrt,torch.abs(torch.square(fftn(x, s=ysqrt.shape, norm='ortho'))),ysqrt,value=-1))))/8 + reg_lambda*torch.square(torch.imag(x[ind1,ind2]))/2
