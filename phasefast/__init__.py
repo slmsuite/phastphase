@@ -17,7 +17,7 @@ def retrieve(
 
       Given a farfield magnitude image :math:`|y|`,
       find a best-fit complex nearfield image :math:`x`
-      such that :math:`|y| \approx \left| \mathcal{F}\{x\} \right|`.
+      such that :math:`\left| \mathcal{F}\{x\} \right| \approx |y|`.
 
     Near-Schwarz objects are defined as ... TODO
 
