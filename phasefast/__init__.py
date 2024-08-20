@@ -3,6 +3,8 @@ from torch.fft import fftn, ifftn
 import torchmin
 from tqdm import tqdm
 
+import warnings
+
 import numpy as np
 
 __version__ = '0.0.1'
@@ -46,10 +48,15 @@ def retrieve(
           then a ``cupy.ndarray`` is returned.
         - Otherwise, a ``numpy.array`` is returned.
     """
+    # Grab nearfield amp
+    known_nearfield_amp = kwargs.pop("known_nearfield_amp", None)
+
     # Determine the class of the data, and force it to be a torch tensor.
     xp = None   # numpy/cupy module; None ==> torch
     if isinstance(farfield_data, torch.Tensor):
         farfield_torch = farfield_data.detach()
+        if known_nearfield_amp is not None: 
+            known_nearfield_amp_torch = known_nearfield_amp.detach()
     else:
         # Determine whether cupy or numpy is used.
         if hasattr(farfield_data, "get_array_module"):
@@ -70,15 +77,20 @@ def retrieve(
         # as_tensor uses the same memory, including the cupy/GPU case, if possible based on the device.
         try:
             farfield_torch = torch.as_tensor(farfield_data, device=torch_device)
+            if known_nearfield_amp is not None: 
+                known_nearfield_amp_torch = torch.as_tensor(known_nearfield_amp, device=torch_device)
         except:
             # torch doesn't support some numpy features such as negative slides, so
             # we fallback to copying the memory.
             farfield_torch = torch.as_tensor(farfield_data.copy(), device=torch_device)
+            if known_nearfield_amp is not None: 
+                known_nearfield_amp_torch = torch.as_tensor(known_nearfield_amp.copy(), device=torch_device)
 
     # Wrap the actual phase retrieval functions.
     retrieved_object = retrieve_(
         farfield_torch,
         nearfield_support_shape,
+        known_nearfield_amp=known_nearfield_amp_torch,
         **kwargs
     )
 
@@ -151,7 +163,15 @@ def retrieve_(
     nearfield_retrieved : torch.Tensor
         Recovered complex object :math:`x` which is a best fit for :math:`|\mathcal{F}\{x\}| \approx |y|`.
     """
-    # Start by calculating the sepstrum of the image.
+    # Fix the datatype of the tensor.
+    if not farfield_data.dtype in [torch.float32, torch.float64]:
+        warnings.warn(
+            f"Datatype {farfield_data.dtype } is not compatible with retrieval. "
+            "casting to torch.float32."
+        )
+        farfield_data = farfield_data.to(torch.float32)
+
+    # Start by calculating the cepstrum of the image.
     # The farfield_offset is used to avoid log(0).
     y = torch.add(farfield_data, farfield_offset)
     cepstrum = ifftn(torch.log(y))
@@ -183,8 +203,9 @@ def retrieve_(
 
     # Construct the figure of merit based on whether a nearfield amp guess was provided.
     if known_nearfield_amp is not None:
+        print(known_nearfield_amp)
         def loss_lam_L2(x):
-            return SOS_loss(torch.view_as_complex(x), torch.sqrt(y), cost_reg, wind_1, wind_2, known_nearfield_amp)
+            return SOS_loss(torch.view_as_complex(x), torch.sqrt(y), cost_reg, wind_1, wind_2, known_nearfield_amp, amp_lambda=100)
     else:
         def loss_lam_L2(x):
             return SOS_loss2(torch.view_as_complex(x), torch.sqrt(y), cost_reg, wind_1, wind_2)
@@ -193,7 +214,9 @@ def retrieve_(
     x0 = torch.view_as_real_copy(x_out)
     x0.requires_grad_()
     optimizer = torch.optim.AdamW([x0], lr=.01, foreach=True)
-    for _ in range(adam_iters):
+    iterator = range(adam_iters)
+    if verbose: iterator = tqdm(iterator, desc="Adam")
+    for _ in iterator:
         optimizer.zero_grad()
         loss = loss_lam_L2(x0)
         loss.backward()
@@ -201,15 +224,16 @@ def retrieve_(
 
     # Finish with a super-Newton refinement.
     x0 = x0.detach().clone()
-    result = torchmin.trustregion._minimize_trust_ncg(
-        loss_lam_L2,
-        x0,
-        gtol=grad_tolerance,
-        disp=2,
-        max_trust_radius=1e3,
-        initial_trust_radius=100
-    )
-    x_final = result.x
+    # result = torchmin.trustregion._minimize_trust_ncg(
+    #     loss_lam_L2,
+    #     x0,
+    #     gtol=grad_tolerance,
+    #     disp=2,
+    #     max_trust_radius=1e3,
+    #     initial_trust_radius=100
+    # )
+    # x_final = result.x
+    x_final = x0
 
     return torch.view_as_complex_copy(x_final)
 
@@ -281,7 +305,15 @@ def bisection_winding_calc(shape, cepstrum, num_loops=100, verbose=False):
 
     return (winding_num_1, winding_num_2)
 
-def SOS_loss(x: torch.Tensor, ysqrt: torch.Tensor,reg_lambda: float, ind1: int, ind2: int, known_nearfield_amp: torch.Tensor) -> torch.Tensor:
+def SOS_loss(
+    x: torch.Tensor, 
+    ysqrt: torch.Tensor, 
+    reg_lambda: float, 
+    ind1: int, 
+    ind2: int, 
+    known_nearfield_amp: torch.Tensor,
+    amp_lambda : float
+) -> torch.Tensor:
     """Sums of Squares loss function with known nearfield.
 
     Includes regularization to break global phase symmetry.
@@ -294,6 +326,8 @@ def SOS_loss(x: torch.Tensor, ysqrt: torch.Tensor,reg_lambda: float, ind1: int, 
         Far-field Intensities.
     reg_lambda : float
         Regularizer to fix phase.
+    amp_lambda : float
+        To motivate amplitude constraint.
     ind1 : int
         Reference point index 1.
     ind2 : int
@@ -306,10 +340,39 @@ def SOS_loss(x: torch.Tensor, ysqrt: torch.Tensor,reg_lambda: float, ind1: int, 
     loss : torch.Tensor
         Loss for this guess ``x``.
     """
-    return (torch.square(torch.linalg.vector_norm(torch.addcdiv(ysqrt, torch.abs(torch.square(fftn(x, s=ysqrt.shape, norm='ortho'))), ysqrt, value=-1))))/8 \
-            + reg_lambda*torch.square(torch.imag(x[ind1, ind2]))/2 + (torch.square(torch.linalg.vector_norm(torch.addcdiv(known_nearfield_amp,torch.square(torch.abs(x)),known_nearfield_amp,value=-1))))/8
+    return (
+        (torch.square(
+            torch.linalg.vector_norm(
+                torch.addcdiv(
+                    ysqrt, 
+                    torch.abs(
+                        torch.square(fftn(x, s=ysqrt.shape, norm='ortho'))
+                    ), 
+                    ysqrt, 
+                    value=-1
+                )
+            )
+        ))/8
+        + reg_lambda*torch.square(torch.imag(x[ind1, ind2]))/2 
+        + amp_lambda*(torch.square(
+            torch.linalg.vector_norm(
+                torch.addcdiv(
+                    known_nearfield_amp,
+                    torch.abs(x), # torch.square(), # Removed square; do we need to to normalize beforehand?
+                    known_nearfield_amp,
+                    value=-1
+                )
+            )
+        ))/8
+    )
 
-def SOS_loss2(x: torch.Tensor, ysqrt: torch.Tensor,reg_lambda: float, ind1: int, ind2: int) -> torch.Tensor:
+def SOS_loss2(
+    x: torch.Tensor, 
+    ysqrt: torch.Tensor,
+    reg_lambda: float, 
+    ind1: int, 
+    ind2: int
+) -> torch.Tensor:
     """Sums of Squares loss function for Phase Retrieval.
 
     Includes regularization to break global phase symmetry.
@@ -334,4 +397,16 @@ def SOS_loss2(x: torch.Tensor, ysqrt: torch.Tensor,reg_lambda: float, ind1: int,
     loss : torch.Tensor
         Loss for this guess ``x``.
     """
-    return (torch.square(torch.linalg.vector_norm(torch.addcdiv(ysqrt,torch.abs(torch.square(fftn(x, s=ysqrt.shape, norm='ortho'))),ysqrt,value=-1))))/8 + reg_lambda*torch.square(torch.imag(x[ind1,ind2]))/2
+    return (
+        (torch.square(
+            torch.linalg.vector_norm(
+                torch.addcdiv(
+                    ysqrt,
+                    torch.abs(torch.square(fftn(x, s=ysqrt.shape, norm='ortho'))),
+                    ysqrt,
+                    value=-1
+                )
+            )
+        ))/8 
+        + reg_lambda*torch.square(torch.imag(x[ind1,ind2]))/2
+    )
