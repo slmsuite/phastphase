@@ -2,12 +2,12 @@
 API Reference
 *************
 
-This page provides an auto-generated summary of the internals of |phasefast|_'s API
-outside of the :meth:`~phasefast.retrieve()` function.
+This page provides an auto-generated summary of the internals of |phastphase|_'s API
+outside of the :meth:`~phastphase.retrieve()` function.
 The general user should not need to look at these internals.
-You can find the source on `GitHub <https://github.com/slmsuite/phasefast>`_.
+You can find the source on `GitHub <https://github.com/slmsuite/phastphase>`_.
 
-.. currentmodule:: phasefast
+.. currentmodule:: phastphase
 .. autosummary::
    :toctree: _autosummary
    :template: custom-method-template.rst
@@ -19,5 +19,5 @@ You can find the source on `GitHub <https://github.com/slmsuite/phasefast>`_.
    SOS_loss
    SOS_loss2
 
-.. |phasefast| replace:: :mod:`phasefast`
-.. _phasefast: https://github.com/slmsuite/phasefast
+.. |phastphase| replace:: :mod:`phastphase`
+.. _phastphase: https://github.com/slmsuite/phastphase

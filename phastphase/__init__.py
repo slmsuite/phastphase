@@ -35,7 +35,7 @@ def retrieve(
         If ``None``, this is set to half the height and width of the shape of ``farfield_data``.
     **kwargs
         Additional flags to hone retrieval.
-        These flags are documented in :meth:`~phasefast.retrieve_()`.
+        These flags are documented in :meth:`~phastphase.retrieve_()`.
 
     Returns
     -------
@@ -55,7 +55,7 @@ def retrieve(
     xp = None   # numpy/cupy module; None ==> torch
     if isinstance(farfield_data, torch.Tensor):
         farfield_torch = farfield_data.detach()
-        if known_nearfield_amp is not None: 
+        if known_nearfield_amp is not None:
             known_nearfield_amp_torch = known_nearfield_amp.detach()
     else:
         # Determine whether cupy or numpy is used.
@@ -77,13 +77,13 @@ def retrieve(
         # as_tensor uses the same memory, including the cupy/GPU case, if possible based on the device.
         try:
             farfield_torch = torch.as_tensor(farfield_data, device=torch_device)
-            if known_nearfield_amp is not None: 
+            if known_nearfield_amp is not None:
                 known_nearfield_amp_torch = torch.as_tensor(known_nearfield_amp, device=torch_device)
         except:
             # torch doesn't support some numpy features such as negative slides, so
             # we fallback to copying the memory.
             farfield_torch = torch.as_tensor(farfield_data.copy(), device=torch_device)
-            if known_nearfield_amp is not None: 
+            if known_nearfield_amp is not None:
                 known_nearfield_amp_torch = torch.as_tensor(known_nearfield_amp.copy(), device=torch_device)
 
     # Wrap the actual phase retrieval functions.
@@ -306,11 +306,11 @@ def bisection_winding_calc(shape, cepstrum, num_loops=100, verbose=False):
     return (winding_num_1, winding_num_2)
 
 def SOS_loss(
-    x: torch.Tensor, 
-    ysqrt: torch.Tensor, 
-    reg_lambda: float, 
-    ind1: int, 
-    ind2: int, 
+    x: torch.Tensor,
+    ysqrt: torch.Tensor,
+    reg_lambda: float,
+    ind1: int,
+    ind2: int,
     known_nearfield_amp: torch.Tensor,
     amp_lambda : float
 ) -> torch.Tensor:
@@ -344,16 +344,16 @@ def SOS_loss(
         (torch.square(
             torch.linalg.vector_norm(
                 torch.addcdiv(
-                    ysqrt, 
+                    ysqrt,
                     torch.abs(
                         torch.square(fftn(x, s=ysqrt.shape, norm='ortho'))
-                    ), 
-                    ysqrt, 
+                    ),
+                    ysqrt,
                     value=-1
                 )
             )
         ))/8
-        + reg_lambda*torch.square(torch.imag(x[ind1, ind2]))/2 
+        + reg_lambda*torch.square(torch.imag(x[ind1, ind2]))/2
         + amp_lambda*(torch.square(
             torch.linalg.vector_norm(
                 torch.addcdiv(
@@ -367,10 +367,10 @@ def SOS_loss(
     )
 
 def SOS_loss2(
-    x: torch.Tensor, 
+    x: torch.Tensor,
     ysqrt: torch.Tensor,
-    reg_lambda: float, 
-    ind1: int, 
+    reg_lambda: float,
+    ind1: int,
     ind2: int
 ) -> torch.Tensor:
     """Sums of Squares loss function for Phase Retrieval.
@@ -407,6 +407,6 @@ def SOS_loss2(
                     value=-1
                 )
             )
-        ))/8 
+        ))/8
         + reg_lambda*torch.square(torch.imag(x[ind1,ind2]))/2
     )

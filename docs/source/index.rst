@@ -1,13 +1,13 @@
-phasefast
+phastphase
 =========
 
-|phasefast|_ solves the phase retrieval problem.
+|phastphase|_ solves the phase retrieval problem.
 
 TODO: image intro.
 
-This functionality is available under :meth:`phasefast.retrieve()`. TODO
+This functionality is available under :meth:`phastphase.retrieve()`. TODO
 
-.. autofunction:: phasefast.retrieve
+.. autofunction:: phastphase.retrieve
 
 .. toctree::
    :maxdepth: 2
@@ -17,5 +17,5 @@ This functionality is available under :meth:`phasefast.retrieve()`. TODO
    examples
    api
 
-.. |phasefast| replace:: :mod:`phasefast`
-.. _phasefast: https://github.com/slmsuite/phasefast
+.. |phastphase| replace:: :mod:`phastphase`
+.. _phastphase: https://github.com/slmsuite/phastphase

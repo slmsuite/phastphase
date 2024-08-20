@@ -4,7 +4,7 @@ setup.py - this module makes the package installable
 
 from setuptools import setup
 
-NAME = "phasefast"
+NAME = "phastphase"
 VERSION = "0.0.1"
 DEPENDENCIES = [
     "numpy",
@@ -17,7 +17,7 @@ DESCRIPTION = (
     "Accurate solution to the phase retrieval problem "
     "for near-Schwarz objects."
 )
-AUTHOR = "phasefast developers"
+AUTHOR = "phastphase developers"
 AUTHOR_EMAIL = "cbrabec@mit.edu"
 
 setup(author=AUTHOR,
