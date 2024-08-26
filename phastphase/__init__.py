@@ -17,16 +17,16 @@ def retrieve(
     r"""
     Solves the phase retrieval problem for near-Schwarz objects.
 
-      Given a farfield magnitude image :math:`|y|`,
-      find a best-fit complex nearfield image :math:`x`
-      such that :math:`\left| \mathcal{F}\{x\} \right| \approx |y|`.
+      Given a farfield intensity image :math:`\textbf{y}`,
+      find a best-fit complex nearfield image :math:`\textbf{x}`
+      such that :math:`\left| \mathcal{F}\{\textbf{x}\} \right|^2 \approx \textbf{y}`.
 
     Near-Schwarz objects are defined as ... TODO
 
     Parameters
     ----------
     farfield_data : torch.Tensor OR numpy.ndarray OR cupy.ndarray OR array_like
-        Farfield magnitudes :math:`|y|`: the 2D image data to retrieve upon.
+        Farfield intensities :math:`\textbf{y}`: the 2D image data to retrieve upon.
     nearfield_support_shape : (int, int) OR None
         The 2D shape of the desired nearfield, the result to retrieve.
         This shape must be smaller than the shape of the farfield
@@ -41,7 +41,8 @@ def retrieve(
     -------
     nearfield_retrieved : torch.Tensor OR numpy.ndarray OR cupy.ndarray
 
-        Recovered complex object :math:`x` which is a best fit for :math:`|\mathcal{F}\{x\}| \approx |y|`.
+        Recovered complex object :math:`\textbf{x}` which is a best fit for 
+        :math:`|\mathcal{F}\{\textbf{x}\}|^2 \approx \textbf{y}`.
 
         - If ``farfield_data`` is a ``torch.Tensor``, then a ``torch.Tensor`` is returned.
         - If ``farfield_data`` is a ``cupy.ndarray`` and the ``device`` is not the CPU,
@@ -50,6 +51,7 @@ def retrieve(
     """
     # Grab nearfield amp
     known_nearfield_amp = kwargs.pop("known_nearfield_amp", None)
+    known_nearfield_amp_torch = None
 
     # Determine the class of the data, and force it to be a torch tensor.
     xp = None   # numpy/cupy module; None ==> torch
@@ -122,7 +124,7 @@ def retrieve_(
     Parameters
     ----------
     farfield_data : torch.Tensor
-        Farfield magnitudes :math:`|y|`: the 2D image data to retrieve upon.
+        Farfield intensities :math:`\textbf{y}`: the 2D image data to retrieve upon.
     nearfield_support_shape : (int, int) OR None
         The 2D shape of the desired nearfield, the result to retrieve.
         This shape must be smaller than the shape of the farfield
@@ -161,7 +163,8 @@ def retrieve_(
     Returns
     -------
     nearfield_retrieved : torch.Tensor
-        Recovered complex object :math:`x` which is a best fit for :math:`|\mathcal{F}\{x\}| \approx |y|`.
+        Recovered complex object :math:`\textbf{x}` which is a best fit for 
+        :math:`|\mathcal{F}\{\textbf{x}\}|^2 \approx \textbf{y}`.
     """
     # Fix the datatype of the tensor.
     if not farfield_data.dtype in [torch.float32, torch.float64]:
@@ -233,6 +236,7 @@ def retrieve_(
     #     initial_trust_radius=100
     # )
     # x_final = result.x
+        
     x_final = x0
 
     return torch.view_as_complex_copy(x_final)
