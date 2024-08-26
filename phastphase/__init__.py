@@ -17,9 +17,9 @@ def retrieve(
     r"""
     Solves the phase retrieval problem for near-Schwarz objects.
 
-      Given a oversampled farfield intensity image :math:`|y|`,
+      Given a oversampled farfield power image :math:`y`,
       find a best-fit complex nearfield image :math:`x`
-      such that :math:`\left| \mathcal{F}\{x\} \right|^2 \approx |y|`.
+      such that :math:`\left| \mathcal{F}\{x\} \right|^2 \approx y`.
       Where the Fourier transform is the zero-padded DFT.
 
     Near-Schwarz objects are defined by the phase of their Z-Transform:
@@ -29,7 +29,7 @@ def retrieve(
     Parameters
     ----------
     farfield_data : torch.Tensor OR numpy.ndarray OR cupy.ndarray OR array_like
-        Farfield intensities :math:`|y|`: the 2D image data to retrieve upon.
+        Farfield power :math:`y`: the 2D image data to retrieve upon.
     nearfield_support_shape : (int, int) OR None
         The 2D shape of the desired nearfield, the result to retrieve.
         This shape must be smaller than the shape of the farfield
@@ -125,7 +125,7 @@ def retrieve_(
     Parameters
     ----------
     farfield_data : torch.Tensor
-        Farfield power :math:`|y|`: the 2D image data to retrieve upon.
+        Farfield power :math:`y`: the 2D image data to retrieve upon.
     nearfield_support_shape : (int, int) OR None
         The 2D shape of the desired nearfield, the result to retrieve.
         This shape must be smaller than the shape of the farfield
