@@ -235,11 +235,15 @@ def retrieve_(
 
     # Finish with a super-Newton refinement.
     x0 = x0.detach().clone()
+    if verbose:
+        display = 2
+    else:
+        display = 0
     result = torchmin.trustregion._minimize_trust_ncg(
         loss_lam_L2,
         x0,
         gtol=grad_tolerance,
-        disp=2,
+        disp=display,
         max_trust_radius=1e3,
         initial_trust_radius=100
     )
