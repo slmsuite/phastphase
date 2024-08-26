@@ -1,7 +1,7 @@
 <p align="center">
 <picture>
 <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/slmsuite/phastphase/main/docs/source/static/phastphase-dark.svg">
-<img alt="slmsuite" src="https://raw.githubusercontent.com/slmsuite/phastphase/main/docs/source/static/phastphase.svg" width="256">
+<img alt="phastphase" src="https://raw.githubusercontent.com/slmsuite/phastphase/main/docs/source/static/phastphase.svg" width="256">
 </picture>
 </p>
 

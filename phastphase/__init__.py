@@ -178,9 +178,17 @@ def retrieve_(
     if not farfield_data.dtype in [torch.float32, torch.float64]:
         warnings.warn(
             f"Datatype {farfield_data.dtype } is not compatible with retrieval. "
-            "casting to torch.float32."
+            "casting to torch.float64."
         )
-        farfield_data = farfield_data.to(torch.float32)
+        farfield_data = farfield_data.to(torch.float64)
+    if known_nearfield_amp is not None and not known_nearfield_amp.dtype in [torch.float32, torch.float64]:
+        warnings.warn(
+            f"Datatype {known_nearfield_amp.dtype } is not compatible with retrieval. "
+            "casting to torch.float64."
+        )
+        known_nearfield_amp = known_nearfield_amp.to(torch.float64)
+
+    print(type(farfield_data), farfield_data.device, farfield_data.dtype)
 
     # Start by calculating the cepstrum of the image.
     # The farfield_offset is used to avoid log(0).
