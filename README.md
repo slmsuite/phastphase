@@ -13,9 +13,9 @@
 'phastphase' is a gpu-accelerated implementation of the Fast Phase Retrieval algorithm for solving the support-constrained Phase Retrieval problem on near-Schwarz objects. 
 
 Near-Schwarz objects are defined by the phase of their Z-Transform:
-    $$$
+    $$
     |\text{arg}(X(\textbf{z})) - \text{arg}(\textbf{z}^\textbf{n})| \leq \frac{\pi}{2} 
-    $$$
+    $$
 
 Fast Phase Retrieval is guaranteed to work for objects known as "near-Schwarz Objects": objects with a Z-Transform
 ## Installation
