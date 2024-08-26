@@ -16,12 +16,9 @@
 > Given a farfield intensity image $\textbf{y}$, find a best-fit complex nearfield image $\textbf{x}$ such that $\left| \mathcal{F}\{\textbf{x}\} \right|^2 \approx \textbf{y}$.
     
 Where $\mathcal{F}$ is the zero-padded discrete Fourier transform.
-Fast Phase Retrieval is guaranteed to work for objects known as "near-Schwarz objects": objects with a Z-Transform
-
-$$ |\text{arg}(X(\textbf{z})) - \text{arg}(\textbf{z}^\textbf{n})| \leq \frac{\pi}{2} $$
-
-in practice, these objects ... TODO
-non-Schwarz objects can also be retreived, though without a guarantee of success.
+Near-Schwarz objects are defined by the phase of their Z-Transform:
+    $$ |\text{Arg}(X(\textbf{z})) - \text{Arg}(\textbf{z}^\textbf{n})| \leq \frac{\pi}{2} $$
+While the algorithm may work for objects outside of this class, it is only proven to work for near-Schwarz objects. 
 
 ## Installation
 
