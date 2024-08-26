@@ -17,11 +17,14 @@ def retrieve(
     r"""
     Solves the phase retrieval problem for near-Schwarz objects.
 
-      Given a farfield magnitude image :math:`|y|`,
+      Given a oversampled farfield magnitude image :math:`|y|`,
       find a best-fit complex nearfield image :math:`x`
       such that :math:`\left| \mathcal{F}\{x\} \right| \approx |y|`.
+      Where the Fourier transform is the zero-padded DFT.
 
-    Near-Schwarz objects are defined as ... TODO
+    Near-Schwarz objects are defined by the phase of their Z-Transform:
+        :math:'|\text{arg}(X(\textbf{z})) - \text{arg}(\textbf{z}^\textbf{n})| \leq \frac{\pi}{2}'
+
 
     Parameters
     ----------
