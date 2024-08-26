@@ -185,6 +185,7 @@ def retrieve_(
     # Start by calculating the cepstrum of the image.
     # The farfield_offset is used to avoid log(0).
     y = torch.add(farfield_data, farfield_offset)
+    y = y.detach().clone()
     cepstrum = ifftn(torch.log(y))
 
     # Parse the support and determine the center of the cepstrum.
