@@ -2,12 +2,20 @@
 <img alt="phastphase" src="https://raw.githubusercontent.com/slmsuite/phastphase/main/docs/source/static/phastphase.svg" width="256">
 </p>
 
-<h2 align="center">TODO</h2>
+<h2 align="center">Phase Retrieval For Near Schwarz Objects</h2>
 
 <p align="center">
 <a href="https://phastphase.readthedocs.io/en/latest"><img alt="Documentation Status" src="https://readthedocs.org/projects/phastphase/badge/?version=latest"></a>
 </p>
+'phastphase' is a gpu-accelerated implementation of the Fast Phase Retrieval algorithm for solving the support-constrained Phase Retrieval problem on near-Schwarz objects. 
 
+Given far-field intensities $\textbf{y}$ the algorithm returns a near-Schwarz object satisfying:
+$$|\mathcal{F}\{\textbf{x}\}|^2 \approx \textbf{y}$$
+Where $\mathcal{F}$ is the zero-padded DFT.
+
+Near-Schwarz objects are defined by the phase of their Z-Transform:
+    $$ |\text{Arg}(X(\textbf{z})) - \text{Arg}(\textbf{z}^\textbf{n})| \leq \frac{\pi}{2} $$
+While the algorithm may work for objects outside of this class, it is only proven to work for near-Schwarz objects. 
 ## Installation
 
 Install the stable version of `phastphase` from [PyPI](https://pypi.org/project/phastphase/) using:

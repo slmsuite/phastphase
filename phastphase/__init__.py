@@ -208,7 +208,7 @@ def retrieve_(
 
     # Crop the data based upon the nearfield size.
     x_out = x_out[0:tight_support[0], 0:tight_support[1]]
-    x_out /= torch.exp(1j*torch.angle(x_out[wind_1, wind_2]))
+    x_out = x_out/torch.exp(1j*torch.angle(x_out[wind_1, wind_2]))
     if assume_twinning:
         x_out = x_out[0:wind_1+1,0:wind_2+1]
 
@@ -235,17 +235,16 @@ def retrieve_(
 
     # Finish with a super-Newton refinement.
     x0 = x0.detach().clone()
-    # result = torchmin.trustregion._minimize_trust_ncg(
-    #     loss_lam_L2,
-    #     x0,
-    #     gtol=grad_tolerance,
-    #     disp=2,
-    #     max_trust_radius=1e3,
-    #     initial_trust_radius=100
-    # )
-    # x_final = result.x
+    result = torchmin.trustregion._minimize_trust_ncg(
+        loss_lam_L2,
+        x0,
+        gtol=grad_tolerance,
+        disp=2,
+        max_trust_radius=1e3,
+        initial_trust_radius=100
+    )
+    x_final = result.x
         
-    x_final = x0
 
     return torch.view_as_complex_copy(x_final)
 
