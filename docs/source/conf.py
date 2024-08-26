@@ -31,8 +31,8 @@ for module_path in module_paths:
 # -- Project information -----------------------------------------------------
 
 project = "phastphase"
-copyright = "2024, phastphase Developers"        # Cole TODO
-author = "phastphase Developers"
+copyright = "2024, Cole Brabec"        
+author = "Cole Brabec"
 release = "0.0.1"
 
 # -- General configuration ---------------------------------------------------
