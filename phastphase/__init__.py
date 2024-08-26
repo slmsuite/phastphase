@@ -20,8 +20,16 @@ def retrieve(
       Given a farfield intensity image :math:`\textbf{y}`,
       find a best-fit complex nearfield image :math:`\textbf{x}`
       such that :math:`\left| \mathcal{F}\{\textbf{x}\} \right|^2 \approx \textbf{y}`.
+    
+    Where :math:`\mathcal{F}` is the zero-padded discrete Fourier transform.
 
-    Near-Schwarz objects are defined as ... TODO
+    Tip
+    ~~~
+    Near-Schwarz objects are defined by the phase of their Z-Transform:
+    
+    ..math::
+    
+        |\text{arg}(X(\textbf{z})) - \text{arg}(\textbf{z}^\textbf{n})| \leq \frac{\pi}{2}
 
     Parameters
     ----------
