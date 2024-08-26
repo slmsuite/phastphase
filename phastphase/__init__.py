@@ -155,10 +155,13 @@ def retrieve_(
         Regularization if :math:`Y` has zeros. Defaults to ``1e-12``.
     adam_iters : int
         Number of iterations of the ``AdamW`` algorithm to run before
-        Trust Region Super-Newton optimization.
-        Defaults to 100.
+        trust region super-Newton optimization.
+        Defaults to 10.
     grad_tolerance : float
-        Gradient tolerance for the Trust Region Super-Newton optimization. Defaults to ``1e-9``.
+        Gradient tolerance for the trust region super-Newton optimization.
+        For large images, the computation of the Hessian-Vector product can hang.
+        In this case, the user can set the ``grad_tolerance`` to ``inf`` to avoid this step.
+        Defaults to ``1e-9``.
     cost_reg : float
         Regularization parameter to remove the global phase ambiguity in the optimization landscape.  Defaults to ``1``.
     reference_point : (int, int) OR None
@@ -178,17 +181,15 @@ def retrieve_(
     if not farfield_data.dtype in [torch.float32, torch.float64]:
         warnings.warn(
             f"Datatype {farfield_data.dtype } is not compatible with retrieval. "
-            "casting to torch.float64."
+            "casting to torch.float32."
         )
-        farfield_data = farfield_data.to(torch.float64)
+        farfield_data = farfield_data.to(torch.float32)
     if known_nearfield_amp is not None and not known_nearfield_amp.dtype in [torch.float32, torch.float64]:
         warnings.warn(
             f"Datatype {known_nearfield_amp.dtype } is not compatible with retrieval. "
-            "casting to torch.float64."
+            "casting to torch.float32."
         )
-        known_nearfield_amp = known_nearfield_amp.to(torch.float64)
-
-    print(type(farfield_data), farfield_data.device, farfield_data.dtype)
+        known_nearfield_amp = known_nearfield_amp.to(torch.float32)
 
     # Start by calculating the cepstrum of the image.
     # The farfield_offset is used to avoid log(0).
@@ -223,9 +224,13 @@ def retrieve_(
 
     # Construct the figure of merit based on whether a nearfield amp guess was provided.
     if known_nearfield_amp is not None:
-        print(known_nearfield_amp)
+        known_nearfield_amp = torch.add(known_nearfield_amp, farfield_offset)
         def loss_lam_L2(x):
-            return SOS_loss(torch.view_as_complex(x), torch.sqrt(y), cost_reg, wind_1, wind_2, known_nearfield_amp, amp_lambda=100)
+            return SOS_loss(
+                torch.view_as_complex(x), torch.sqrt(y), 
+                cost_reg, wind_1, wind_2, 
+                known_nearfield_amp, amp_lambda=1
+            )
     else:
         def loss_lam_L2(x):
             return SOS_loss2(torch.view_as_complex(x), torch.sqrt(y), cost_reg, wind_1, wind_2)
@@ -235,28 +240,36 @@ def retrieve_(
     x0.requires_grad_()
     optimizer = torch.optim.AdamW([x0], lr=.01, foreach=True)
     iterator = range(adam_iters)
-    if verbose: iterator = tqdm(iterator, desc="Adam")
+    if verbose and adam_iters > 1: iterator = tqdm(iterator, desc="Adam")
     for _ in iterator:
         optimizer.zero_grad()
         loss = loss_lam_L2(x0)
         loss.backward()
+
+        if verbose and adam_iters > 1:
+            iterator.set_description(f"Adam (loss={loss}, grad={loss.grad})")
+
         optimizer.step()
 
+            
     # Finish with a super-Newton refinement.
     x0 = x0.detach().clone()
-    if verbose:
-        display = 2
+    if np.isinf(grad_tolerance):
+        x_final = x0
     else:
-        display = 0
-    result = torchmin.trustregion._minimize_trust_ncg(
-        loss_lam_L2,
-        x0,
-        gtol=grad_tolerance,
-        disp=display,
-        max_trust_radius=1e3,
-        initial_trust_radius=100
-    )
-    x_final = result.x
+        if verbose:
+            display = 2
+        else:
+            display = 0
+        result = torchmin.trustregion._minimize_trust_ncg(
+            loss_lam_L2,
+            x0,
+            gtol=grad_tolerance,
+            disp=display,
+            max_trust_radius=1e3,
+            initial_trust_radius=100
+        )
+        x_final = result.x
         
 
     return torch.view_as_complex_copy(x_final)
