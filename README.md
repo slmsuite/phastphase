@@ -5,12 +5,14 @@
 </picture>
 </p>
 
-<h2 align="center">TODO</h2>
+<h2 align="center">Phase Retrieval For Near Schwarz Objects</h2>
 
 <p align="center">
 <a href="https://phastphase.readthedocs.io/en/latest"><img alt="Documentation Status" src="https://readthedocs.org/projects/phastphase/badge/?version=latest"></a>
 </p>
+'phastphase' is a gpu-accelerated implementation of the Fast Phase Retrieval algorithm for solving the support-constrained Phase Retrieval problem.
 
+Fast Phase Retrieval is guaranteed to work for objects known as "near-Schwarz Objects": objects with a Z-Transform
 ## Installation
 
 Install the stable version of `phastphase` from [PyPI](https://pypi.org/project/phastphase/) using:
