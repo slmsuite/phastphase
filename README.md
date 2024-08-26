@@ -10,14 +10,12 @@
 <p align="center">
 <a href="https://phastphase.readthedocs.io/en/latest"><img alt="Documentation Status" src="https://readthedocs.org/projects/phastphase/badge/?version=latest"></a>
 </p>
-'phastphase' is a gpu-accelerated implementation of the Fast Phase Retrieval algorithm for solving the support-constrained Phase Retrieval problem.
-      Given a oversampled farfield magnitude image :math:`|y|`,
-      find a best-fit complex nearfield image :math:`x`
-      such that :math:`\left| \mathcal{F}\{x\} \right| \approx |y|`.
-      Where the Fourier transform is the zero-padded DFT.
+'phastphase' is a gpu-accelerated implementation of the Fast Phase Retrieval algorithm for solving the support-constrained Phase Retrieval problem on near-Schwarz objects. 
 
-    Near-Schwarz objects are defined by the phase of their Z-Transform:
-        :math:'|\text{arg}(X(\textbf{z})) - \text{arg}(\textbf{z}^\textbf{n})| \leq \frac{\pi}{2}'
+Near-Schwarz objects are defined by the phase of their Z-Transform:
+    $$$
+    |\text{arg}(X(\textbf{z})) - \text{arg}(\textbf{z}^\textbf{n})| \leq \frac{\pi}{2} 
+    $$$
 
 Fast Phase Retrieval is guaranteed to work for objects known as "near-Schwarz Objects": objects with a Z-Transform
 ## Installation
