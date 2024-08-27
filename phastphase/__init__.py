@@ -76,7 +76,7 @@ def retrieve(
 
         # Determine the device based on the value of device.
         device = kwargs.pop("device", None)
-        if torch.cuda.is_available() and (device is not False):
+        if torch.cuda.is_avafilable() and (device is not False):
             if device is not None:
                 torch_device = device
             else:
@@ -265,9 +265,7 @@ def retrieve_(
             loss_lam_L2,
             x0,
             gtol=grad_tolerance,
-            disp=display,
-            max_trust_radius=1e3,
-            initial_trust_radius=100
+            disp=display
         )
         x_final = result.x
         

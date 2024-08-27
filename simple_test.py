@@ -9,9 +9,9 @@ if torch.cuda.is_available():
 else:
     tensor_device = torch.device('cpu')
 
-p = 6 #power of 2 for the near field image
-overs = 2   #oversampling
-N = 2**p    #number of pixels in 1 dimension
+p = 6                       #power of 2 for the near field image
+overs = 2                   #oversampling
+N = 2**p                    #number of pixels in 1 dimension
 x = torch.randn((N,N),
                 dtype=torch.cdouble, 
                 device = tensor_device
