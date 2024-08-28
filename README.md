@@ -9,6 +9,7 @@
 
 <p align="center">
 <a href="https://phastphase.readthedocs.io/en/latest"><img alt="Documentation Status" src="https://readthedocs.org/projects/phastphase/badge/?version=latest"></a>
+<a href="https://arxiv.org/abs/2407.01350"><img alt="Citation" src="https://img.shields.io/badge/cite-arXiv%3A2407.01350-B31B1B.svg"></a>
 </p>
 
 ## Installation
