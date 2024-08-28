@@ -17,16 +17,24 @@ def retrieve(
     r"""
     Solves the phase retrieval problem for near-Schwarz objects.
 
-      Given a farfield magnitude image :math:`|y|`,
-      find a best-fit complex nearfield image :math:`x`
-      such that :math:`\left| \mathcal{F}\{x\} \right| \approx |y|`.
+      Given a farfield intensity image :math:`\textbf{y}`,
+      find a best-fit complex nearfield image :math:`\textbf{x}`
+      such that :math:`\left| \mathcal{F}\{\textbf{x}\} \right|^2 \approx \textbf{y}`.
+    
+    Where :math:`\mathcal{F}` is the zero-padded discrete Fourier transform.
 
-    Near-Schwarz objects are defined as ... TODO
+    Tip
+    ~~~
+    Near-Schwarz objects are defined by the phase of their Z-Transform:
+    
+    ..math::
+    
+        |\text{arg}(X(\textbf{z})) - \text{arg}(\textbf{z}^\textbf{n})| \leq \frac{\pi}{2}
 
     Parameters
     ----------
     farfield_data : torch.Tensor OR numpy.ndarray OR cupy.ndarray OR array_like
-        Farfield magnitudes :math:`|y|`: the 2D image data to retrieve upon.
+        Farfield intensities :math:`\textbf{y}`: the 2D image data to retrieve upon.
     nearfield_support_shape : (int, int) OR None
         The 2D shape of the desired nearfield, the result to retrieve.
         This shape must be smaller than the shape of the farfield
@@ -41,7 +49,8 @@ def retrieve(
     -------
     nearfield_retrieved : torch.Tensor OR numpy.ndarray OR cupy.ndarray
 
-        Recovered complex object :math:`x` which is a best fit for :math:`|\mathcal{F}\{x\}| \approx |y|`.
+        Recovered complex object :math:`\textbf{x}` which is a best fit for 
+        :math:`|\mathcal{F}\{\textbf{x}\}|^2 \approx \textbf{y}`.
 
         - If ``farfield_data`` is a ``torch.Tensor``, then a ``torch.Tensor`` is returned.
         - If ``farfield_data`` is a ``cupy.ndarray`` and the ``device`` is not the CPU,
@@ -50,6 +59,7 @@ def retrieve(
     """
     # Grab nearfield amp
     known_nearfield_amp = kwargs.pop("known_nearfield_amp", None)
+    known_nearfield_amp_torch = None
 
     # Determine the class of the data, and force it to be a torch tensor.
     xp = None   # numpy/cupy module; None ==> torch
@@ -66,7 +76,7 @@ def retrieve(
 
         # Determine the device based on the value of device.
         device = kwargs.pop("device", None)
-        if torch.cuda.is_available() and (device is not False):
+        if torch.cuda.is_avafilable() and (device is not False):
             if device is not None:
                 torch_device = device
             else:
@@ -122,7 +132,7 @@ def retrieve_(
     Parameters
     ----------
     farfield_data : torch.Tensor
-        Farfield magnitudes :math:`|y|`: the 2D image data to retrieve upon.
+        Farfield intensities :math:`\textbf{y}`: the 2D image data to retrieve upon.
     nearfield_support_shape : (int, int) OR None
         The 2D shape of the desired nearfield, the result to retrieve.
         This shape must be smaller than the shape of the farfield
@@ -145,10 +155,13 @@ def retrieve_(
         Regularization if :math:`Y` has zeros. Defaults to ``1e-12``.
     adam_iters : int
         Number of iterations of the ``AdamW`` algorithm to run before
-        Trust Region Super-Newton optimization.
-        Defaults to 100.
+        trust region super-Newton optimization.
+        Defaults to 10.
     grad_tolerance : float
-        Gradient tolerance for the Trust Region Super-Newton optimization. Defaults to ``1e-9``.
+        Gradient tolerance for the trust region super-Newton optimization.
+        For large images, the computation of the Hessian-Vector product can hang.
+        In this case, the user can set the ``grad_tolerance`` to ``inf`` to avoid this step.
+        Defaults to ``1e-9``.
     cost_reg : float
         Regularization parameter to remove the global phase ambiguity in the optimization landscape.  Defaults to ``1``.
     reference_point : (int, int) OR None
@@ -161,7 +174,8 @@ def retrieve_(
     Returns
     -------
     nearfield_retrieved : torch.Tensor
-        Recovered complex object :math:`x` which is a best fit for :math:`|\mathcal{F}\{x\}| \approx |y|`.
+        Recovered complex object :math:`\textbf{x}` which is a best fit for 
+        :math:`|\mathcal{F}\{\textbf{x}\}|^2 \approx \textbf{y}`.
     """
     # Fix the datatype of the tensor.
     if not farfield_data.dtype in [torch.float32, torch.float64]:
@@ -170,10 +184,17 @@ def retrieve_(
             "casting to torch.float32."
         )
         farfield_data = farfield_data.to(torch.float32)
+    if known_nearfield_amp is not None and not known_nearfield_amp.dtype in [torch.float32, torch.float64]:
+        warnings.warn(
+            f"Datatype {known_nearfield_amp.dtype } is not compatible with retrieval. "
+            "casting to torch.float32."
+        )
+        known_nearfield_amp = known_nearfield_amp.to(torch.float32)
 
     # Start by calculating the cepstrum of the image.
     # The farfield_offset is used to avoid log(0).
     y = torch.add(farfield_data, farfield_offset)
+    y = y.detach().clone()
     cepstrum = ifftn(torch.log(y))
 
     # Parse the support and determine the center of the cepstrum.
@@ -197,15 +218,19 @@ def retrieve_(
 
     # Crop the data based upon the nearfield size.
     x_out = x_out[0:tight_support[0], 0:tight_support[1]]
-    x_out /= torch.exp(1j*torch.angle(x_out[wind_1, wind_2]))
+    x_out = x_out/torch.exp(1j*torch.angle(x_out[wind_1, wind_2]))
     if assume_twinning:
         x_out = x_out[0:wind_1+1,0:wind_2+1]
 
     # Construct the figure of merit based on whether a nearfield amp guess was provided.
     if known_nearfield_amp is not None:
-        print(known_nearfield_amp)
+        known_nearfield_amp = torch.add(known_nearfield_amp, farfield_offset)
         def loss_lam_L2(x):
-            return SOS_loss(torch.view_as_complex(x), torch.sqrt(y), cost_reg, wind_1, wind_2, known_nearfield_amp, amp_lambda=100)
+            return SOS_loss(
+                torch.view_as_complex(x), torch.sqrt(y), 
+                cost_reg, wind_1, wind_2, 
+                known_nearfield_amp, amp_lambda=1
+            )
     else:
         def loss_lam_L2(x):
             return SOS_loss2(torch.view_as_complex(x), torch.sqrt(y), cost_reg, wind_1, wind_2)
@@ -215,25 +240,35 @@ def retrieve_(
     x0.requires_grad_()
     optimizer = torch.optim.AdamW([x0], lr=.01, foreach=True)
     iterator = range(adam_iters)
-    if verbose: iterator = tqdm(iterator, desc="Adam")
+    if verbose and adam_iters > 1: iterator = tqdm(iterator, desc="Adam")
     for _ in iterator:
         optimizer.zero_grad()
         loss = loss_lam_L2(x0)
         loss.backward()
+
+        if verbose and adam_iters > 1:
+            iterator.set_description(f"Adam (loss={loss}, grad={loss.grad})")
+
         optimizer.step()
 
+            
     # Finish with a super-Newton refinement.
     x0 = x0.detach().clone()
-    # result = torchmin.trustregion._minimize_trust_ncg(
-    #     loss_lam_L2,
-    #     x0,
-    #     gtol=grad_tolerance,
-    #     disp=2,
-    #     max_trust_radius=1e3,
-    #     initial_trust_radius=100
-    # )
-    # x_final = result.x
-    x_final = x0
+    if np.isinf(grad_tolerance):
+        x_final = x0
+    else:
+        if verbose:
+            display = 2
+        else:
+            display = 0
+        result = torchmin.trustregion._minimize_trust_ncg(
+            loss_lam_L2,
+            x0,
+            gtol=grad_tolerance,
+            disp=display
+        )
+        x_final = result.x
+        
 
     return torch.view_as_complex_copy(x_final)
 

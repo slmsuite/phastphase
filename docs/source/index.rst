@@ -1,17 +1,18 @@
 phastphase
 =========
 
-|phastphase|_ solves the phase retrieval problem.
+|phastphase|_ solves the support-constrained phase retrieval problem For near-Schwarz Objects. 
 
-TODO: image intro.
+TODO: image intro. Put in pillars of creations image 
 
-This functionality is available under :meth:`phastphase.retrieve()`. TODO
+This functionality is available under :meth:`phastphase.retrieve()`. 
+
 
 .. autofunction:: phastphase.retrieve
 
 .. toctree::
    :maxdepth: 2
-   :caption: TODO
+   :caption: User Guide
 
    installation
    examples
