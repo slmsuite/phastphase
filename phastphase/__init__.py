@@ -20,16 +20,11 @@ def retrieve(
       Given a farfield intensity image :math:`\textbf{y}`,
       find a best-fit complex nearfield image :math:`\textbf{x}`
       such that :math:`\left| \mathcal{F}\{\textbf{x}\} \right|^2 \approx \textbf{y}`.
-    
-    Where :math:`\mathcal{F}` is the zero-padded discrete Fourier transform.
 
-    Tip
-    ~~~
+    Where :math:`\mathcal{F}` is the zero-padded discrete Fourier transform.
     Near-Schwarz objects are defined by the phase of their Z-Transform:
-    
-    ..math::
-    
-        |\text{arg}(X(\textbf{z})) - \text{arg}(\textbf{z}^\textbf{n})| \leq \frac{\pi}{2}
+
+    .. math: |\text{arg}(X(\textbf{z})) - \text{arg}(\textbf{z}^\textbf{n})| \leq \frac{\pi}{2}
 
     Parameters
     ----------
@@ -49,7 +44,7 @@ def retrieve(
     -------
     nearfield_retrieved : torch.Tensor OR numpy.ndarray OR cupy.ndarray
 
-        Recovered complex object :math:`\textbf{x}` which is a best fit for 
+        Recovered complex object :math:`\textbf{x}` which is a best fit for
         :math:`|\mathcal{F}\{\textbf{x}\}|^2 \approx \textbf{y}`.
 
         - If ``farfield_data`` is a ``torch.Tensor``, then a ``torch.Tensor`` is returned.
@@ -174,7 +169,7 @@ def retrieve_(
     Returns
     -------
     nearfield_retrieved : torch.Tensor
-        Recovered complex object :math:`\textbf{x}` which is a best fit for 
+        Recovered complex object :math:`\textbf{x}` which is a best fit for
         :math:`|\mathcal{F}\{\textbf{x}\}|^2 \approx \textbf{y}`.
     """
     # Fix the datatype of the tensor.
@@ -227,8 +222,8 @@ def retrieve_(
         known_nearfield_amp = torch.add(known_nearfield_amp, farfield_offset)
         def loss_lam_L2(x):
             return SOS_loss(
-                torch.view_as_complex(x), torch.sqrt(y), 
-                cost_reg, wind_1, wind_2, 
+                torch.view_as_complex(x), torch.sqrt(y),
+                cost_reg, wind_1, wind_2,
                 known_nearfield_amp, amp_lambda=1
             )
     else:
@@ -251,7 +246,7 @@ def retrieve_(
 
         optimizer.step()
 
-            
+
     # Finish with a super-Newton refinement.
     x0 = x0.detach().clone()
     if np.isinf(grad_tolerance):
@@ -268,7 +263,7 @@ def retrieve_(
             disp=display
         )
         x_final = result.x
-        
+
 
     return torch.view_as_complex_copy(x_final)
 
