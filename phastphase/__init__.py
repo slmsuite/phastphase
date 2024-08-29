@@ -205,8 +205,8 @@ def retrieve_(
     # Shift the data based upon the found center.
     mask = torch.zeros_like(cepstrum)
     mask[0:y.shape[0]//2, 0:y.shape[1]//2] = 2
+    mask[0:2*wind_1, 0:2*wind_2] = 1
     mask = torch.roll(mask, (-wind_1, -wind_2), dims=(0, 1))
-    mask[0, 0] = 1
     filtered_logy = fftn(torch.mul(mask, cepstrum))
     x_out = ifftn(torch.exp(1/2*filtered_logy), norm='ortho')
     x_out = torch.roll(x_out, (wind_1, wind_2), dims=(0, 1))
@@ -386,12 +386,7 @@ def SOS_loss(
         + reg_lambda*torch.square(torch.imag(x[ind1, ind2]))/2
         + amp_lambda*(torch.square(
             torch.linalg.vector_norm(
-                torch.addcdiv(
-                    known_nearfield_amp,
-                    torch.abs(x), # torch.square(), # Removed square; do we need to to normalize beforehand?
-                    known_nearfield_amp,
-                    value=-1
-                )
+                torch.abs(x) - known_nearfield_amp
             )
         ))/8
     )
