@@ -1,5 +1,5 @@
 phastphase
-=========
+==========
 
 |phastphase|_ solves the support-constrained phase retrieval problem for near-Schwarz Objects.
 
