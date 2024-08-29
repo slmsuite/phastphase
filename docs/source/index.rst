@@ -1,7 +1,7 @@
 phastphase
 =========
 
-|phastphase|_ solves the support-constrained phase retrieval problem For near-Schwarz Objects.
+|phastphase|_ solves the support-constrained phase retrieval problem for near-Schwarz Objects.
 
 .. raw:: html
 
