@@ -1,8 +1,7 @@
-numpy
-torch==2.1.2
-torchaudio==2.1.2
-torchvision==0.16.2
+numpy<2.0
+torch>=2.3
 pytorch-minimize
+tqdm
 nbsphinx
 IPython
 docutils #<0.17
