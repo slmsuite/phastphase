@@ -3,14 +3,14 @@
 Installation
 ============
 
-.. PyPi
-.. ----
+PyPI
+----
 
-.. Install the stable version of |phastphase|_ from `PyPi <https://pypi.org/project/phastphase/>`_ using:
+Install the stable version of |phastphase|_ from `PyPI <https://pypi.org/project/phastphase/>`_ using:
 
-.. .. code-block:: console
+.. code-block:: console
 
-..     pip install phastphase
+    pip install phastphase
 
 GitHub
 ------
@@ -31,8 +31,8 @@ One can also clone |phastphase|_ directly and add its directory to the Python pa
 Required Dependencies
 ---------------------
 
-The following python packages are necessary to run |phastphase|_. These are listed as PyPi
-dependencies and thus are installed automatically if PyPi (``pip``) is used to install.
+The following python packages are necessary to run |phastphase|_. These are listed as PyPI
+dependencies and thus are installed automatically if PyPI (``pip``) is used to install.
 
 - `python <https://www.python.org/>`_
 - `numpy <https://numpy.org/>`_
