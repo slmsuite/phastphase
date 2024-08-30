@@ -12,7 +12,6 @@ phastphase
    <a href="https://arxiv.org/abs/2407.01350"><img alt="Citation" src="https://img.shields.io/badge/cite-arXiv%3A2407.01350-B31B1B.svg"></a>
    </p>
 
-TODO: image intro. Put in pillars of creations image
 
 This functionality is available under :meth:`phastphase.retrieve()`.
 
@@ -23,6 +22,7 @@ This functionality is available under :meth:`phastphase.retrieve()`.
    :maxdepth: 2
    :caption: User Guide
 
+   introduction 
    installation
    examples
    api
