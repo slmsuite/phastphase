@@ -222,6 +222,7 @@ def setup(app):
             path_str = path_object["path"]
             if path_str[:19] == "examples/phastphase" and path_str[-6:] == ".ipynb":
                 file_name = path_str[9:]
+                print(f"Downloading {file_name}")
                 file_path = os.path.join(examples_path, file_name)
                 file_url = (
                     "https://api.github.com/repos/{}/{}/git/blobs/{}"
@@ -231,7 +232,6 @@ def setup(app):
                 file_content = file_response["content"]
                 file_str = base64.b64decode(file_content.encode("utf8")).decode("utf8")
                 with open(file_path, "w", encoding='utf8') as file_:
-                    print(f"Downloading {file_str}")
                     file_.write(file_str)
     except BaseException as e:
         print("WARNING: Unable to download example notebooks. "
