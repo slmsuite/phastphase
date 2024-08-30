@@ -6,4 +6,4 @@ Examples
 .. nbgallery::
    :glob:
 
-   examples/gassHermiteRecovery.ipynb
+   _examples/phastphase_hermite_gaussian.ipynb
