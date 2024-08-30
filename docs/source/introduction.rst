@@ -34,12 +34,17 @@ Why ``phastphase``?
 ``phastphase`` implements the Fast Phase Retrieval algorithm, the first polynomial time algorithm to provably succeed at Fourier phase retrieval 
 without requiring phase masks or nearfield information. Other features include:
 
+* It's accurate! Existing algorithms such as Wirtinger flow fail on Fourier phase retrieval without
+  gaussian random phase masks. Even with the masks, existing methods can fail on many cases.  
+
 * It's phast! Using GPU acceleration recoveries take seconds on full-HD images. The underlying algorithm
   has a worst case arithmetic complexity of :math:`O(N\log(N)` for images with N pixels.
 
 * ``phastphase`` can use nearfield information if available to broaden the class of objects it can recover.
 
 * User Friendly! ``phastphase`` takes both numpy arrays and pytorch tensors!
+
+
 
 Basic Use
 ----------
