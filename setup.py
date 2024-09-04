@@ -8,10 +8,7 @@ NAME = "phastphase"
 VERSION = "0.0.1"
 DEPENDENCIES = [
     "numpy",
-    "torch",
-    "torchaudio",
-    "torchvision",
-    "pytorch-minimize",
+    "pytorch-minimize"
 ]
 DESCRIPTION = (
     "Accurate solution to the phase retrieval problem "

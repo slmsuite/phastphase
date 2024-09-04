@@ -202,7 +202,7 @@ def retrieve_(
     # Shift the data based upon the found center.
     mask = torch.zeros_like(cepstrum)
     mask[0:y.shape[0]//2, 0:y.shape[1]//2] = 2
-    mask[0:2*wind_1, 0:2*wind_2] = 1
+    mask[0:2*wind_1+1, 0:2*wind_2+1] = 1
     mask = torch.roll(mask, (-wind_1, -wind_2), dims=(0, 1))
     filtered_logy = fftn(torch.mul(mask, cepstrum))
     x_out = ifftn(torch.exp(1/2*filtered_logy), norm='ortho')
@@ -257,8 +257,8 @@ def retrieve_(
             loss_lam_L2,
             x0,
             gtol=grad_tolerance,
-            disp=display
         )
+        return result
         x_final = result.x
 
 
