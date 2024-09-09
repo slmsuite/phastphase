@@ -109,7 +109,7 @@ def retrieve_(
         assume_twinning: bool = False,
         farfield_offset: float = 1e-12,
         grad_tolerance: float = 1e-9,
-        adam_iters: int = 0,
+        adam_iters: int = 10,
         cost_reg: float = 1,
         reference_point = None,
         known_nearfield_amp = None,
@@ -258,7 +258,7 @@ def retrieve_(
             x0,
             gtol=grad_tolerance,
         )
-        return result
+        #return result
         x_final = result.x
 
 
