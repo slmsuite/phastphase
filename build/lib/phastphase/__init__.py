@@ -109,12 +109,10 @@ def retrieve_(
         assume_twinning: bool = False,
         farfield_offset: float = 1e-12,
         grad_tolerance: float = 1e-9,
-        adam_iters: int = 10,
+        adam_iters: int = 0,
         cost_reg: float = 1,
         reference_point = None,
         known_nearfield_amp = None,
-        mask = None,
-        assume_real : bool = False
     ) -> torch.Tensor:
     r"""
     Wrapped by :meth:`retrieve` to make the many optional flags less intimidating
@@ -259,9 +257,8 @@ def retrieve_(
             loss_lam_L2,
             x0,
             gtol=grad_tolerance,
-            disp = display
         )
-        #return result
+        return result
         x_final = result.x
 
 
@@ -435,25 +432,3 @@ def SOS_loss2(
         ))/8
         + reg_lambda*torch.square(torch.imag(x[ind1,ind2]))/2
     )
-
-def real_masked_loss(
-    x: torch.Tensor,
-    ysqrt: torch.Tensor,
-    reg_lambda: float,
-    mask: torch.Tensor
-) -> torch.Tensor:
-    
-        return (
-        (torch.square(
-            torch.linalg.vector_norm(
-                mask*torch.addcdiv(
-                    ysqrt,
-                    torch.abs(torch.square(fftn(x, s=ysqrt.shape, norm='ortho'))),
-                    ysqrt,
-                    value=-1
-                )
-            )
-        ))/8
-        + reg_lambda*torch.square(torch.linalg.vector_norm(torch.imag(x)))/2
-    )
-
