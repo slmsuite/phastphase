@@ -113,7 +113,7 @@ def retrieve_(
         cost_reg: float = 1,
         reference_point = None,
         known_nearfield_amp = None,
-        use_trust_region = False,
+        use_trust_region = True,
         mask = None,
         assume_real : bool = False
     ) -> torch.Tensor:
