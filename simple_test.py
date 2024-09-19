@@ -20,6 +20,6 @@ x = torch.randn((N,N),
 d = 0
 x[d,d] =  2*N
 y = torch.square(torch.abs(fftn(x,(overs*N, overs*N), norm = 'ortho')))
-x_out = retrieve(y, [N,N],grad_tolerance = 1e-9)
+x_out = retrieve(y, [N,N],grad_tolerance = 1e-9,verbose=True)
 
 print(torch.linalg.vector_norm(x_out - x)/torch.linalg.norm(x))

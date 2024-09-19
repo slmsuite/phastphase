@@ -109,10 +109,11 @@ def retrieve_(
         assume_twinning: bool = False,
         farfield_offset: float = 1e-12,
         grad_tolerance: float = 1e-9,
-        adam_iters: int = 10,
+        adam_iters: int = 0,
         cost_reg: float = 1,
         reference_point = None,
         known_nearfield_amp = None,
+        use_trust_region = False,
         mask = None,
         assume_real : bool = False
     ) -> torch.Tensor:
@@ -255,13 +256,21 @@ def retrieve_(
             display = 2
         else:
             display = 0
-        result = torchmin.trustregion._minimize_trust_ncg(
-            loss_lam_L2,
-            x0,
-            gtol=grad_tolerance,
-            disp = display
-        )
-        #return result
+        if use_trust_region:
+            result = torchmin.trustregion._minimize_trust_ncg(
+                loss_lam_L2,
+                x0,
+                gtol=grad_tolerance,
+                disp = display
+            )
+        else:
+            result = torchmin.bfgs._minimize_lbfgs(
+                loss_lam_L2,
+                x0,
+                gtol=grad_tolerance,
+                xtol = 1e-15,
+                disp = display
+            )
         x_final = result.x
 
 
