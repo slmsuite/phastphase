@@ -115,7 +115,8 @@ def retrieve_(
         known_nearfield_amp = None,
         use_trust_region = True,
         mask = None,
-        assume_real : bool = False
+        assume_real : bool = False,
+        tr_max_iter: int = 500
     ) -> torch.Tensor:
     r"""
     Wrapped by :meth:`retrieve` to make the many optional flags less intimidating
@@ -261,7 +262,8 @@ def retrieve_(
                 loss_lam_L2,
                 x0,
                 gtol=grad_tolerance,
-                disp = display
+                disp = display,
+                max_iter = tr_max_iter
             )
         else:
             result = torchmin.bfgs._minimize_lbfgs(
