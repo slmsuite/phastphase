@@ -211,6 +211,7 @@ def retrieve_(
     filtered_logy = fftn(torch.mul(mask, cepstrum))
     x_out = ifftn(torch.exp(1/2*filtered_logy), norm='ortho')
     x_out = torch.roll(x_out, (wind_1, wind_2), dims=(0, 1))
+    x_out = schwarz_transform(cepstrum,(wind_1,wind_2))
 
     # Crop the data based upon the nearfield size.
     x_out = x_out[0:tight_support[0], 0:tight_support[1]]
@@ -345,6 +346,29 @@ def bisection_winding_calc(shape, cepstrum, num_loops=100, verbose=False):
             break
 
     return (winding_num_1, winding_num_2)
+def schwarz_transform(cepstrum, winding):
+    sz = cepstrum.shape
+    mask = torch.zeros_like(cepstrum)
+    (n,m) = torch.meshgrid(torch.fft.ifftshift(torch.linspace(-np.ceil(sz[0]/2), sz[0]//2 ,steps=sz[0])),
+                           torch.fft.ifftshift(torch.linspace(-np.ceil(sz[1]/2), sz[1]//2 ,steps=sz[1])), indexing='ij')
+    if winding == (0,0):
+        mask[0:sz[0]//2, 0:sz[1]//2] = 2
+        mask[0,0] =1
+    elif winding[0] == 0:
+         mask[0:sz[0]//2, 0:sz[1]] = 2
+         mask[0,0] =1
+    elif winding[1] == 0:
+        mask[0:sz[0], 0:sz[1]//2] = 2
+        mask[0,0] =1
+    else:
+        mask[winding[0]*n + winding[1]*m >= 0] = 2
+        mask = torch.roll(mask, (winding[0], winding[1]), dims=(0, 1))
+        mask[0:2*winding[0]+1, 0:2*winding[1]+1]=1
+        mask = torch.roll(mask, (-winding[0], -winding[1]), dims=(0, 1))
+    filtered_logy = fftn(torch.mul(mask, cepstrum))
+    x_out = ifftn(torch.exp(1/2*filtered_logy), norm='ortho')
+    x_out = torch.roll(x_out, (winding[0], winding[1]), dims=(0, 1))
+    return x_out
 
 def SOS_loss(
     x: torch.Tensor,
