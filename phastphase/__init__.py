@@ -51,11 +51,13 @@ def retrieve(
     """
     # Grab nearfield amp
     known_nearfield_amp = kwargs.pop("known_nearfield_amp", None)
+    support_mask = kwargs.pop("support_mask",None)
     known_nearfield_amp_torch = None
 
     # Determine the class of the data, and force it to be a torch tensor.
     xp = None   # numpy/cupy module; None ==> torch
     if isinstance(farfield_data, torch.Tensor):
+        support_mask_torch = torch.as_tensor(support_mask.copy(), device=farfield_data.device)
         farfield_torch = farfield_data.detach()
         if known_nearfield_amp is not None:
             known_nearfield_amp_torch = known_nearfield_amp.detach()
@@ -94,7 +96,7 @@ def retrieve(
         farfield_torch,
         nearfield_support_shape,
         known_nearfield_amp=known_nearfield_amp_torch,
-        support_mask=support_mask_torch
+        support_mask = support_mask_torch,
         **kwargs
     )
 
