@@ -5,7 +5,7 @@ setup.py - this module makes the package installable
 from setuptools import setup
 
 NAME = "phastphase"
-VERSION = "0.0.19"
+VERSION = "0.0.21"
 DEPENDENCIES = [
     "numpy",
     "pytorch-minimize"

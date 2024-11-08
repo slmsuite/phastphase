@@ -120,6 +120,7 @@ def retrieve_(
         use_trust_region = True,
         support_mask = None,
         assume_real : bool = False,
+        fast_winding: bool = False,
         tr_max_iter: int = 500
     ) -> torch.Tensor:
     r"""
@@ -241,6 +242,8 @@ def retrieve_(
         def loss_lam_L2(x):
             return SOS_loss2(support_mask*torch.view_as_complex(x), torch.sqrt(y), cost_reg, wind_1, wind_2)
 
+    if fast_winding:
+        return(x_out, loss_lam_L2(x_out), (wind_1, wind_2))
     # Start with an Adam optimization.
     x0 = torch.view_as_real_copy(x_out)
     x0.requires_grad_()
@@ -288,6 +291,9 @@ def retrieve_(
 
     return torch.view_as_complex_copy(x_final)
 
+def schwarz_transform_calculation(
+    
+)
 def bisection_winding_calc(shape, cepstrum, num_loops=100, verbose=False):
     """
     Calculates the ``reference_point`` by centering the winding.
