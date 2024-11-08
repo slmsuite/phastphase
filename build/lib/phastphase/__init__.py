@@ -68,7 +68,7 @@ def retrieve(
 
         # Determine the device based on the value of device.
         device = kwargs.pop("device", None)
-        if torch.cuda.is_available() and (device is not False):
+        if torch.cuda.is_avafilable() and (device is not False):
             if device is not None:
                 torch_device = device
             else:
@@ -113,10 +113,6 @@ def retrieve_(
         cost_reg: float = 1,
         reference_point = None,
         known_nearfield_amp = None,
-        use_trust_region = True,
-        mask = None,
-        assume_real : bool = False,
-        tr_max_iter: int = 500
     ) -> torch.Tensor:
     r"""
     Wrapped by :meth:`retrieve` to make the many optional flags less intimidating
@@ -211,7 +207,6 @@ def retrieve_(
     filtered_logy = fftn(torch.mul(mask, cepstrum))
     x_out = ifftn(torch.exp(1/2*filtered_logy), norm='ortho')
     x_out = torch.roll(x_out, (wind_1, wind_2), dims=(0, 1))
-    x_out = schwarz_transform(cepstrum,(wind_1,wind_2))
 
     # Crop the data based upon the nearfield size.
     x_out = x_out[0:tight_support[0], 0:tight_support[1]]
@@ -258,22 +253,12 @@ def retrieve_(
             display = 2
         else:
             display = 0
-        if use_trust_region:
-            result = torchmin.trustregion._minimize_trust_ncg(
-                loss_lam_L2,
-                x0,
-                gtol=grad_tolerance,
-                disp = display,
-                max_iter = tr_max_iter
-            )
-        else:
-            result = torchmin.bfgs._minimize_lbfgs(
-                loss_lam_L2,
-                x0,
-                gtol=grad_tolerance,
-                xtol = 1e-15,
-                disp = display
-            )
+        result = torchmin.trustregion._minimize_trust_ncg(
+            loss_lam_L2,
+            x0,
+            gtol=grad_tolerance,
+        )
+        return result
         x_final = result.x
 
 
@@ -346,29 +331,6 @@ def bisection_winding_calc(shape, cepstrum, num_loops=100, verbose=False):
             break
 
     return (winding_num_1, winding_num_2)
-def schwarz_transform(cepstrum, winding):
-    sz = cepstrum.shape
-    mask = torch.zeros_like(cepstrum)
-    (n,m) = torch.meshgrid(torch.fft.ifftshift(torch.linspace(-np.ceil(sz[0]/2), sz[0]//2 ,steps=sz[0])),
-                           torch.fft.ifftshift(torch.linspace(-np.ceil(sz[1]/2), sz[1]//2 ,steps=sz[1])), indexing='ij')
-    if winding == (0,0):
-        mask[0:sz[0]//2, 0:sz[1]//2] = 2
-        mask[0,0] =1
-    elif winding[0] == 0:
-         mask[0:sz[0]//2, 0:sz[1]] = 2
-         mask[0,0] =1
-    elif winding[1] == 0:
-        mask[0:sz[0], 0:sz[1]//2] = 2
-        mask[0,0] =1
-    else:
-        mask[winding[0]*n + winding[1]*m >= 0] = 2
-        mask = torch.roll(mask, (winding[0], winding[1]), dims=(0, 1))
-        mask[0:2*winding[0]+1, 0:2*winding[1]+1]=1
-        mask = torch.roll(mask, (-winding[0], -winding[1]), dims=(0, 1))
-    filtered_logy = fftn(torch.mul(mask, cepstrum))
-    x_out = ifftn(torch.exp(1/2*filtered_logy), norm='ortho')
-    x_out = torch.roll(x_out, (winding[0], winding[1]), dims=(0, 1))
-    return x_out
 
 def SOS_loss(
     x: torch.Tensor,
@@ -470,25 +432,3 @@ def SOS_loss2(
         ))/8
         + reg_lambda*torch.square(torch.imag(x[ind1,ind2]))/2
     )
-
-def real_masked_loss(
-    x: torch.Tensor,
-    ysqrt: torch.Tensor,
-    reg_lambda: float,
-    mask: torch.Tensor
-) -> torch.Tensor:
-    
-        return (
-        (torch.square(
-            torch.linalg.vector_norm(
-                mask*torch.addcdiv(
-                    ysqrt,
-                    torch.abs(torch.square(fftn(x, s=ysqrt.shape, norm='ortho'))),
-                    ysqrt,
-                    value=-1
-                )
-            )
-        ))/8
-        + reg_lambda*torch.square(torch.linalg.vector_norm(torch.imag(x)))/2
-    )
-
