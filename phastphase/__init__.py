@@ -114,7 +114,7 @@ def retrieve_(
         reference_point = None,
         known_nearfield_amp = None,
         use_trust_region = True,
-        mask = None,
+        support_mask = None,
         assume_real : bool = False,
         tr_max_iter: int = 500
     ) -> torch.Tensor:
@@ -203,6 +203,7 @@ def retrieve_(
         [wind_1, wind_2] = bisection_winding_calc(tight_support, cepstrum.numpy(force=True))
         if verbose: print(f'Calculated reference location is: {[wind_1,wind_2]}')
 
+    
     # Shift the data based upon the found center.
     mask = torch.zeros_like(cepstrum)
     mask[0:y.shape[0]//2, 0:y.shape[1]//2] = 2
@@ -212,10 +213,13 @@ def retrieve_(
     x_out = ifftn(torch.exp(1/2*filtered_logy), norm='ortho')
     x_out = torch.roll(x_out, (wind_1, wind_2), dims=(0, 1))
     x_out = schwarz_transform(cepstrum,(wind_1,wind_2))
-
+    
     # Crop the data based upon the nearfield size.
     x_out = x_out[0:tight_support[0], 0:tight_support[1]]
     x_out = x_out/torch.exp(1j*torch.angle(x_out[wind_1, wind_2]))
+    if support_mask is None:
+        support_mask = torch.ones_like(x_out)
+    x_out *= support_mask
     if assume_twinning:
         x_out = x_out[0:wind_1+1,0:wind_2+1]
 
@@ -224,13 +228,13 @@ def retrieve_(
         known_nearfield_amp = torch.add(known_nearfield_amp, farfield_offset)
         def loss_lam_L2(x):
             return SOS_loss(
-                torch.view_as_complex(x), torch.sqrt(y),
+                support_mask*torch.view_as_complex(x), torch.sqrt(y),
                 cost_reg, wind_1, wind_2,
                 known_nearfield_amp, amp_lambda=1
             )
     else:
         def loss_lam_L2(x):
-            return SOS_loss2(torch.view_as_complex(x), torch.sqrt(y), cost_reg, wind_1, wind_2)
+            return SOS_loss2(support_mask*torch.view_as_complex(x), torch.sqrt(y), cost_reg, wind_1, wind_2)
 
     # Start with an Adam optimization.
     x0 = torch.view_as_real_copy(x_out)
