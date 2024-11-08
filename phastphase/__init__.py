@@ -79,6 +79,7 @@ def retrieve(
         # as_tensor uses the same memory, including the cupy/GPU case, if possible based on the device.
         try:
             farfield_torch = torch.as_tensor(farfield_data, device=torch_device)
+            support_mask_torch = torch.as_tensor(support_mask.copy(), device=torch_device)
             if known_nearfield_amp is not None:
                 known_nearfield_amp_torch = torch.as_tensor(known_nearfield_amp, device=torch_device)
         except:
@@ -93,6 +94,7 @@ def retrieve(
         farfield_torch,
         nearfield_support_shape,
         known_nearfield_amp=known_nearfield_amp_torch,
+        support_mask=support_mask_torch
         **kwargs
     )
 
@@ -173,6 +175,7 @@ def retrieve_(
         Recovered complex object :math:`\textbf{x}` which is a best fit for
         :math:`|\mathcal{F}\{\textbf{x}\}|^2 \approx \textbf{y}`.
     """
+    
     # Fix the datatype of the tensor.
     if not farfield_data.dtype in [torch.float32, torch.float64]:
         warnings.warn(
