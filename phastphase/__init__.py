@@ -218,7 +218,8 @@ def retrieve_(
     filtered_logy = fftn(torch.mul(mask, cepstrum))
     x_out = ifftn(torch.exp(1/2*filtered_logy), norm='ortho')
     x_out = torch.roll(x_out, (wind_1, wind_2), dims=(0, 1))
-    x_out = schwarz_transform(cepstrum,(wind_1,wind_2))
+    
+    x_out = schwarz_transform(cepstrum, (wind_1,wind_2))
     
     # Crop the data based upon the nearfield size.
     x_out = x_out[0:tight_support[0], 0:tight_support[1]]
@@ -243,7 +244,8 @@ def retrieve_(
             return SOS_loss2(support_mask*torch.view_as_complex(x), torch.sqrt(y), cost_reg, wind_1, wind_2)
 
     if fast_winding:
-        return(x_out, loss_lam_L2(x_out), (wind_1, wind_2))
+        loss = loss_lam_L2(torch.view_as_real_copy(x_out)).item()
+        return (loss, wind_1, wind_2)
     # Start with an Adam optimization.
     x0 = torch.view_as_real_copy(x_out)
     x0.requires_grad_()
@@ -291,9 +293,6 @@ def retrieve_(
 
     return torch.view_as_complex_copy(x_final)
 
-def schwarz_transform_calculation(
-    
-)
 def bisection_winding_calc(shape, cepstrum, num_loops=100, verbose=False):
     """
     Calculates the ``reference_point`` by centering the winding.
@@ -376,7 +375,7 @@ def schwarz_transform(cepstrum, winding):
         mask[0:sz[0], 0:sz[1]//2] = 2
         mask[0,0] =1
     else:
-        mask[winding[0]*n + winding[1]*m >= 0] = 2
+        mask[winding[1]*n + winding[0]*m >= 0] = 2
         mask = torch.roll(mask, (winding[0], winding[1]), dims=(0, 1))
         mask[0:2*winding[0]+1, 0:2*winding[1]+1]=1
         mask = torch.roll(mask, (-winding[0], -winding[1]), dims=(0, 1))
@@ -506,4 +505,3 @@ def real_masked_loss(
         ))/8
         + reg_lambda*torch.square(torch.linalg.vector_norm(torch.imag(x)))/2
     )
-

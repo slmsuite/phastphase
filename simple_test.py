@@ -17,9 +17,8 @@ x = torch.randn((N,N),
                 device = tensor_device
                 )
 mask = np.ones((N,N))
-d = 4
+d = 1
 x[d,d] =  2*N
 y = torch.square(torch.abs(fftn(x,(overs*N, overs*N), norm = 'ortho')))
 x_out = retrieve(y, [N,N],grad_tolerance = 1e-12,verbose=True,tr_max_iter = 100, support_mask= mask)
-
-print(torch.linalg.vector_norm(x_out - x)/torch.linalg.norm(x))
+#print(torch.linalg.vector_norm(x_out - x)/torch.linalg.norm(x))
