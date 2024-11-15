@@ -57,7 +57,7 @@ def retrieve(
     # Determine the class of the data, and force it to be a torch tensor.
     xp = None   # numpy/cupy module; None ==> torch
     if isinstance(farfield_data, torch.Tensor):
-        support_mask_torch = torch.as_tensor(support_mask.copy(), device=farfield_data.device)
+        support_mask_torch = support_mask
         farfield_torch = farfield_data.detach()
         if known_nearfield_amp is not None:
             known_nearfield_amp_torch = known_nearfield_amp.detach()
@@ -291,9 +291,6 @@ def retrieve_(
 
     return torch.view_as_complex_copy(x_final)
 
-def schwarz_transform_calculation(
-    
-)
 def bisection_winding_calc(shape, cepstrum, num_loops=100, verbose=False):
     """
     Calculates the ``reference_point`` by centering the winding.
