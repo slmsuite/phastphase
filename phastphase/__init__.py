@@ -2,12 +2,12 @@ import torch
 from torch.fft import fftn, ifftn
 import torchmin
 from tqdm import tqdm
-
+import math
 import warnings
 
 import numpy as np
 
-__version__ = '0.0.1'
+__version__ = '0.0.27'
 
 def retrieve(
         farfield_data,
@@ -121,7 +121,8 @@ def retrieve_(
         support_mask = None,
         assume_real : bool = False,
         fast_winding: bool = False,
-        tr_max_iter: int = 500
+        tr_max_iter: int = 500,
+        oversample_ratio = 2
     ) -> torch.Tensor:
     r"""
     Wrapped by :meth:`retrieve` to make the many optional flags less intimidating
@@ -210,20 +211,13 @@ def retrieve_(
         if verbose: print(f'Calculated reference location is: {[wind_1,wind_2]}')
 
     
-    # Shift the data based upon the found center.
-    mask = torch.zeros_like(cepstrum)
-    mask[0:y.shape[0]//2, 0:y.shape[1]//2] = 2
-    mask[0:2*wind_1+1, 0:2*wind_2+1] = 1
-    mask = torch.roll(mask, (-wind_1, -wind_2), dims=(0, 1))
-    filtered_logy = fftn(torch.mul(mask, cepstrum))
-    x_out = ifftn(torch.exp(1/2*filtered_logy), norm='ortho')
-    x_out = torch.roll(x_out, (wind_1, wind_2), dims=(0, 1))
-    
-    x_out = schwarz_transform(cepstrum, (wind_1,wind_2))
+    # Shift the data based upon the found center.    
+    x_out = schwarz_transform(y, (wind_1,wind_2), oversample_ratio, tight_support)
     
     # Crop the data based upon the nearfield size.
     x_out = x_out[0:tight_support[0], 0:tight_support[1]]
     x_out = x_out/torch.exp(1j*torch.angle(x_out[wind_1, wind_2]))
+
     if support_mask is None:
         support_mask = torch.ones_like(x_out)
     x_out *= support_mask
@@ -360,7 +354,14 @@ def bisection_winding_calc(shape, cepstrum, num_loops=100, verbose=False):
             break
 
     return (winding_num_1, winding_num_2)
-def schwarz_transform(cepstrum, winding):
+def schwarz_transform(y, winding,oversample_ratio, support):
+    autocorr = torch.fft.ifft2(y/math.sqrt(y.shape[0]*y.shape[1]))
+    autocorr = torch.roll(autocorr, (support[0]-1, support[1]-1), dims=(0, 1))
+    autocorr2 = torch.zeros((y.shape[0]*oversample_ratio, y.shape[1]*oversample_ratio), dtype=torch.cdouble, device=y.device)
+    autocorr2[0:2*support[0], 0:2*support[1]] = autocorr
+    autocorr2 = torch.roll(autocorr2, (-(support[0]-1), -(support[1]-1)), dims=(0, 1))
+    y2 = torch.fft.fft2(autocorr2)
+    cepstrum = ifftn(torch.log(y2))
     sz = cepstrum.shape
     mask = torch.zeros_like(cepstrum)
     (n,m) = torch.meshgrid(torch.fft.ifftshift(torch.linspace(-np.ceil(sz[0]/2), sz[0]//2 ,steps=sz[0])),
@@ -380,7 +381,7 @@ def schwarz_transform(cepstrum, winding):
         mask[0:2*winding[0]+1, 0:2*winding[1]+1]=1
         mask = torch.roll(mask, (-winding[0], -winding[1]), dims=(0, 1))
     filtered_logy = fftn(torch.mul(mask, cepstrum))
-    x_out = ifftn(torch.exp(1/2*filtered_logy), norm='ortho')
+    x_out = ifftn(torch.exp(1/2*filtered_logy),norm='ortho')
     x_out = torch.roll(x_out, (winding[0], winding[1]), dims=(0, 1))
     return x_out
 
