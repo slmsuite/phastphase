@@ -7,7 +7,7 @@ import warnings
 
 import numpy as np
 
-__version__ = '0.0.27'
+__version__ = '0.0.37'
 
 def retrieve(
         farfield_data,
@@ -210,9 +210,15 @@ def retrieve_(
         [wind_1, wind_2] = bisection_winding_calc(tight_support, cepstrum.numpy(force=True))
         if verbose: print(f'Calculated reference location is: {[wind_1,wind_2]}')
 
-    
+    mask = torch.zeros_like(cepstrum)
+    mask[0:y.shape[0]//2, 0:y.shape[1]//2] = 2
+    mask = torch.roll(mask, (-wind_1, -wind_2), dims=(0, 1))
+    mask[0, 0] = 1
+    filtered_logy = fftn(torch.mul(mask, cepstrum))
+    x_out = ifftn(torch.exp(1/2*filtered_logy), norm='ortho')
+    x_out = torch.roll(x_out, (wind_1, wind_2), dims=(0, 1))
     # Shift the data based upon the found center.    
-    x_out = schwarz_transform(y, (wind_1,wind_2), oversample_ratio, tight_support)
+    #x_out = schwarz_transform(y, (wind_1,wind_2), oversample_ratio, tight_support)
     
     # Crop the data based upon the nearfield size.
     x_out = x_out[0:tight_support[0], 0:tight_support[1]]
@@ -223,6 +229,7 @@ def retrieve_(
     x_out *= support_mask
     if assume_twinning:
         x_out = x_out[0:wind_1+1,0:wind_2+1]
+        support_mask = support_mask[0:wind_1+1,0:wind_2+1]
 
     # Construct the figure of merit based on whether a nearfield amp guess was provided.
     if known_nearfield_amp is not None:
@@ -238,7 +245,7 @@ def retrieve_(
             return SOS_loss2(support_mask*torch.view_as_complex(x), torch.sqrt(y), cost_reg, wind_1, wind_2)
 
     if fast_winding:
-        loss = loss_lam_L2(torch.view_as_real_copy(x_out)).item()
+        loss = SOS_loss3(support_mask*torch.view_as_complex(x), torch.sqrt(y), cost_reg, wind_1, wind_2).item()
         return (loss, wind_1, wind_2)
     # Start with an Adam optimization.
     x0 = torch.view_as_real_copy(x_out)
@@ -248,7 +255,7 @@ def retrieve_(
     if verbose and adam_iters > 1: iterator = tqdm(iterator, desc="Adam")
     for _ in iterator:
         optimizer.zero_grad()
-        loss = loss_lam_L2(x0)
+        loss = masked_loss(torch.view_as_complex(x0), torch.sqrt(y), cost_reg, torch.rand_like(y), wind_1, wind_2 )
         loss.backward()
 
         if verbose and adam_iters > 1:
@@ -283,8 +290,23 @@ def retrieve_(
                 disp = display
             )
         x_final = result.x
+    x0 = x_final.detach().clone()
+    x0.requires_grad_()
+    optimizer = torch.optim.AdamW([x0], lr=.01, foreach=True)
+    iterator = range(adam_iters)
+    if verbose and adam_iters > 1: iterator = tqdm(iterator, desc="Adam")
+    rand_mask = torch.rand_like(y)
+    for _ in iterator:
+        optimizer.zero_grad()
+        loss = masked_loss(torch.view_as_complex(x0), torch.sqrt(y), cost_reg, rand_mask, wind_1, wind_2 )
+        loss.backward()
 
+        if verbose and adam_iters > 1:
+            iterator.set_description(f"Adam (loss={loss}, grad={loss.grad})")
 
+        optimizer.step()
+
+    x_final = x0.detach().clone()
     return torch.view_as_complex_copy(x_final)
 
 def bisection_winding_calc(shape, cepstrum, num_loops=100, verbose=False):
@@ -355,12 +377,12 @@ def bisection_winding_calc(shape, cepstrum, num_loops=100, verbose=False):
 
     return (winding_num_1, winding_num_2)
 def schwarz_transform(y, winding,oversample_ratio, support):
-    autocorr = torch.fft.ifft2(y/math.sqrt(y.shape[0]*y.shape[1]))
+    autocorr = torch.fft.ifft2(y)
     autocorr = torch.roll(autocorr, (support[0]-1, support[1]-1), dims=(0, 1))
     autocorr2 = torch.zeros((y.shape[0]*oversample_ratio, y.shape[1]*oversample_ratio), dtype=torch.cdouble, device=y.device)
-    autocorr2[0:2*support[0], 0:2*support[1]] = autocorr
+    autocorr2[0:2*support[0], 0:2*support[1]] = autocorr[0:2*support[0], 0:2*support[1]]
     autocorr2 = torch.roll(autocorr2, (-(support[0]-1), -(support[1]-1)), dims=(0, 1))
-    y2 = torch.fft.fft2(autocorr2)
+    y2 = torch.fft.fft2(autocorr2)/(oversample_ratio**2)
     cepstrum = ifftn(torch.log(y2))
     sz = cepstrum.shape
     mask = torch.zeros_like(cepstrum)
@@ -376,7 +398,7 @@ def schwarz_transform(y, winding,oversample_ratio, support):
         mask[0:sz[0], 0:sz[1]//2] = 2
         mask[0,0] =1
     else:
-        mask[winding[1]*n + winding[0]*m >= 0] = 2
+        mask[winding[1]*n + winding[0]*m > 0] = 2
         mask = torch.roll(mask, (winding[0], winding[1]), dims=(0, 1))
         mask[0:2*winding[0]+1, 0:2*winding[1]+1]=1
         mask = torch.roll(mask, (-winding[0], -winding[1]), dims=(0, 1))
@@ -483,14 +505,56 @@ def SOS_loss2(
                 )
             )
         ))/8
-        + reg_lambda*torch.square(torch.imag(x[ind1,ind2]))/2
+        + reg_lambda*torch.square(torch.abs(torch.imag(x[ind1,ind2])))/2
     )
-
-def real_masked_loss(
+def SOS_loss3(
     x: torch.Tensor,
     ysqrt: torch.Tensor,
     reg_lambda: float,
-    mask: torch.Tensor
+    ind1: int,
+    ind2: int
+) -> torch.Tensor:
+    """Sums of Squares loss function for Phase Retrieval.
+
+    Includes regularization to break global phase symmetry.
+
+    Parameters
+    ----------
+    x : torch.Tensor
+        Near field object.
+    y : torch.Tensor
+        Far-field Intensities.
+    reg_lambda : float
+        Regularizer to fix phase.
+    ind1 : int
+        Reference point index 1.
+    ind2 : int
+        Reference point index 2.
+    known_nearfield_amp : torch.Tensor
+        Known amplitude to add as a constraint.
+
+    Returns
+    -------
+    loss : torch.Tensor
+        Loss for this guess ``x``.
+    """
+    return (
+        (torch.square(
+            torch.linalg.vector_norm(
+                    torch.abs(fftn(x, s=ysqrt.shape, norm='ortho'))-
+                    ysqrt
+                )
+            )
+        )/8
+        + reg_lambda*torch.square(torch.abs(torch.imag(x[ind1,ind2])))/2
+    )
+def masked_loss(
+    x: torch.Tensor,
+    ysqrt: torch.Tensor,
+    reg_lambda: float,
+    mask: torch.Tensor,
+    ind1,
+    ind2
 ) -> torch.Tensor:
     
         return (
@@ -504,5 +568,92 @@ def real_masked_loss(
                 )
             )
         ))/8
-        + reg_lambda*torch.square(torch.linalg.vector_norm(torch.imag(x)))/2
+        + reg_lambda*torch.square(torch.abs(torch.sgn(x[ind1,ind2]) -1j))/2
     )
+from torch.jit import Final
+from typing import Tuple, List, Optional
+from torch.fft import ifft2, fft2
+import scipy
+class WindingNumEvaluator(torch.nn.Module):
+    image_size:         Final[Tuple[int, int]]
+    support:            Final[Tuple[int, int]]
+    cepstrum_size:      Final[Tuple[int, int]]
+    oversample_ratio:   Final[int]
+    def __init__(self, y, support: Tuple[int, int], oversample_ratio: Optional[int]=10, mask: Optional[torch.Tensor] = None):
+        super().__init__()
+        torch_device = y.device
+        self.y = y.detach().clone()
+        self.support = (support[0], support[1])
+        self.image_size = (y.shape[0], y.shape[1])
+        self.cepstrum_size = (y.shape[0]*oversample_ratio, y.shape[1]*oversample_ratio)
+        self.oversample_ratio = oversample_ratio
+        if mask is not None:
+            self.support_mask = mask.detach().clone()
+        else:
+            self.support_mask = torch.ones(self.support, dtype=torch.cdouble, device=torch_device)
+        self.cepstrum = torch.zeros(self.cepstrum_size, dtype=torch.cdouble, device=torch_device)
+        self.x = torch.zeros(self.support, dtype=torch.cdouble, device=torch_device)
+        self.autocorr = torch.zeros_like(self.cepstrum)
+        
+        self.autocorr[0:self.image_size[0], 0:self.image_size[1]] =torch.fft.ifftshift( ifft2(y))
+        self.autocorr = torch.roll(self.autocorr, (-self.image_size[0]//2, -self.image_size[1]//2), dims=(0,1))
+
+        self.cepstrum = ifft2(torch.log(fft2(self.autocorr)/(oversample_ratio**2) + 1e-12))
+        self.mask = torch.zeros_like(self.cepstrum)
+        self.x_out = torch.zeros_like(self.cepstrum)
+
+    def forward(self, winding: Tuple[int, int]):
+        sz = self.cepstrum.shape
+        
+        (n,m) = torch.meshgrid(torch.fft.ifftshift(torch.linspace(-math.ceil(sz[0]/2), sz[0]//2 ,steps=sz[0])),
+                            torch.fft.ifftshift(torch.linspace(-math.ceil(sz[1]/2), sz[1]//2 ,steps=sz[1])), indexing='ij')
+        self.mask = torch.zeros_like(self.cepstrum)
+        if winding == (0,0):
+            self.mask[0:sz[0]//2, 0:sz[1]//2] = 2
+            self.mask[0,0] =1
+        elif winding[0] == 0:
+            self.mask[0:sz[0]//2, 0:sz[1]] = 2
+            self.mask[0,0] =1
+        elif winding[1] == 0:
+            self.mask[0:sz[0], 0:sz[1]//2] = 2
+            self.mask[0,0] =1
+        else:
+            self.mask[winding[1]*n + winding[0]*m >= 0] = 2
+            self.mask = torch.roll(self.mask, (winding[0], winding[1]), dims=(0, 1))
+            self.mask[0:2*winding[0]+1, 0:2*winding[1]+1]=1
+            self.mask = torch.roll(self.mask, (-winding[0], -winding[1]), dims=(0, 1))
+        self.x_out = ifft2(torch.exp(1/2*fft2(torch.mul(self.mask, self.cepstrum))),norm='ortho')
+        self.x_out = torch.roll(self.x_out, (winding[0], winding[1]), dims=(0, 1))
+        self.x = self.x_out[0:self.support[0], 0:self.support[1]]
+        self.x  = self.x/torch.exp(1j*torch.angle(self.x[winding[0], winding[1]]))
+        return torch.square(torch.linalg.vector_norm(torch.square(torch.abs(fft2(self.support_mask*self.x, s=self.image_size, norm='ortho'))) - self.y))
+    
+def create_wind_eval(y, support: Tuple[int, int], oversample_ratio: Optional[int]=10, mask: Optional[torch.Tensor] = None):
+    return torch.jit.optimize_for_inference(torch.jit.script(WindingNumEvaluator(y, support, oversample_ratio, mask).eval()))
+
+def basin_refine(support, y, winding, x0,niters=100):
+
+    ytorch = torch.as_tensor(y)
+    xshape = torch.zeros(support)
+    def loss_func(x): return SOS_loss2(torch.view_as_complex(x.view_as(xshape)), torch.sqrt(ytorch),1,winding[0],winding[1])
+
+
+    loss_grad = torch.func.grad(loss_func)
+
+    def hvp(x, p):
+        return torch.autograd.functional.vhp(loss_func, x, p)[1].t()
+
+
+    def scipy_loss(x):
+        torch_in = torch.from_numpy(x)
+        return loss_func(torch_in).numpy(force=True)
+
+    def scipy_grad(x):
+        torch_in = torch.from_numpy(x)
+        return loss_grad(torch_in).numpy(force=True)
+    def scipy_hvp(x,p):
+        torch_x = torch.from_numpy(x)
+        torch_p = torch.from_numpy(p)
+        return hvp(torch_x, torch_p).numpy(force=True)
+
+    return scipy.optimize.basinhopping(scipy_loss, x0,stepsize=1,niter=niters,interval=10, T = 0,minimizer_kwargs={'method':'TNC', 'jac' : scipy_grad, 'hessp' : scipy_hvp, 'tol': 1e-7, 'options': {'maxiter': 100}},disp=True )
