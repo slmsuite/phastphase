@@ -2,9 +2,12 @@ import scipy.optimize
 import torch
 from torch.fft import fftn
 import numpy as np
-from phastphase import retrieve, SOS_loss2, SOS_loss3, masked_loss
+import torchmin.trustregion
+from phastphase import retrieve, SOS_loss2, SOS_loss3, masked_loss, refine_
 from phastphase.script_modules import create_wind_eval
+import torchmin
 import scipy
+import math
 if torch.cuda.is_available():
     tensor_device = torch.device('cpu')
 else:
@@ -12,53 +15,28 @@ else:
 
 p = 6                       #power of 2 for the near field image
 overs = 4                   #oversampling
-N = 2**p                    #number of pixels in 1 dimension
+N = 2**p                 #number of pixels in 1 dimension
 x = torch.randn((N,N),
                 dtype=torch.cdouble, 
                 device = tensor_device
                 )
 
 mask = np.ones((N,N))
-d = 1
-x[d,d] =  .9j*N
+d = 0
+x[d,d] =  1.3*N
+
+def poisson_loss_func(x,y,cost_lam,ind1,ind2):
+    f = torch.abs(fftn(x, s=y.shape, norm='ortho'))
+    return torch.square(torch.linalg.vector_norm(f - y)) + cost_lam*torch.square(torch.imag(x[ind1,ind2]))
 y = torch.square(torch.abs(fftn(x,(overs*N, overs*N), norm = 'ortho')))
-x_out = retrieve(y, [N,N],grad_tolerance = 1e-9,reference_point = [d,d], verbose=False,tr_max_iter = 1000, oversample_ratio=2, adam_iters=0)
-print(torch.linalg.vector_norm(x_out - x)/N**2)
+oversample_r = (2**math.ceil(math.log2(overs*N-5)))/(overs*N-5)
+x_out = retrieve(y, [N,N],grad_tolerance = 1e-9,reference_point = [d,d], verbose=True,tr_max_iter = 1000, oversample_ratio=1, adam_iters=0, return_each_iter = True)
 
-mask = torch.zeros_like(y)
-mask[0:2:, 0:2:] = 1
-mask = 1-mask
-xshape = torch.view_as_real_copy(x_out)
-x0 = torch.flatten(xshape).numpy(force=True)
-def loss_func(x): return masked_loss(torch.view_as_complex(x.view_as(xshape)), torch.sqrt(y),1,mask, d,d) 
+#x_out =refine_(x_out, y, (0,0), torch.ones_like(x), x.shape, (0,0), loss_func=poisson_loss_func)
+print(torch.linalg.vector_norm(x_out[0] - x)/N**2)
 
+def loss_lam(x):
+    return SOS_loss3(torch.view_as_complex(x), torch.sqrt(y), .5, 0,0)
 
-loss_grad = torch.func.grad(loss_func)
-
-def hvp(x, p):
-    return torch.autograd.functional.vhp(loss_func, x, p)[1].t()
-
-
-def scipy_loss(x):
-    torch_in = torch.from_numpy(x)
-    return loss_func(torch_in).numpy(force=True)
-
-def scipy_grad(x):
-    torch_in = torch.from_numpy(x)
-    return loss_grad(torch_in).numpy(force=True)
-def scipy_hvp(x,p):
-    torch_x = torch.from_numpy(x)
-    torch_p = torch.from_numpy(p)
-    return hvp(torch_x, torch_p).numpy(force=True)
-
-output = scipy.optimize.minimize(scipy_loss, x0, method = 'trust-krylov', jac = scipy_grad, hessp=scipy_hvp, options={'disp':False,'gtol':1e-7})
-print(scipy_loss(output.x))
-
-mask[:,:] = 1
-output = scipy.optimize.minimize(scipy_loss, output.x, method = 'trust-ncg', jac = scipy_grad, hessp=scipy_hvp, options={'disp':False})
-
-print(scipy_loss(output.x))
-xf = torch.view_as_complex(torch.as_tensor(output.x).view_as(xshape))
-
-print(torch.linalg.vector_norm(xf - x)/N**2)
-#output = scipy.optimize.basinhopping(scipy_loss, x0,stepsize=1,niter=500,interval=10, T = 0,minimizer_kwargs={'method':'TNC', 'jac' : scipy_grad, 'hessp' : scipy_hvp, 'tol': 1e-7, 'options': {'maxiter': 1000}},disp=True )
+x_f = torchmin.trustregion._minimize_trust_ncg(loss_lam, torch.view_as_real_copy(x_out + 10*torch.randn_like(x_out)), return_all = True, disp=2, max_iter=10)
+print(x_f.allvecs[0].shape)

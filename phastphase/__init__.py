@@ -7,7 +7,7 @@ import warnings
 
 import numpy as np
 
-__version__ = '0.0.37'
+__version__ = '0.0.49'
 
 def retrieve(
         farfield_data,
@@ -122,7 +122,9 @@ def retrieve_(
         assume_real : bool = False,
         fast_winding: bool = False,
         tr_max_iter: int = 500,
-        oversample_ratio = 2
+        oversample_ratio = 1,
+        loss_func = None,
+        return_each_iter = False
     ) -> torch.Tensor:
     r"""
     Wrapped by :meth:`retrieve` to make the many optional flags less intimidating
@@ -196,7 +198,11 @@ def retrieve_(
 
     # Start by calculating the cepstrum of the image.
     # The farfield_offset is used to avoid log(0).
-    y = torch.add(farfield_data, farfield_offset)
+    if oversample_ratio > 1:
+        y = oversample_y(farfield_data, oversample_ratio, nearfield_support_shape)
+    else:
+        y = farfield_data.clone().detach()
+    y = torch.add(y, farfield_offset)
     y = y.detach().clone()
     cepstrum = ifftn(torch.log(y))
 
@@ -241,13 +247,16 @@ def retrieve_(
                 known_nearfield_amp, amp_lambda=1
             )
     else:
+        if loss_func is None:
+            loss_func = SOS_loss2
         def loss_lam_L2(x):
-            return SOS_loss2(support_mask*torch.view_as_complex(x), torch.sqrt(y), cost_reg, wind_1, wind_2)
+            return loss_func(support_mask*torch.view_as_complex(x), torch.sqrt(y), cost_reg, wind_1, wind_2)
 
     if fast_winding:
         loss = SOS_loss3(support_mask*torch.view_as_complex(x), torch.sqrt(y), cost_reg, wind_1, wind_2).item()
         return (loss, wind_1, wind_2)
     # Start with an Adam optimization.
+
     x0 = torch.view_as_real_copy(x_out)
     x0.requires_grad_()
     optimizer = torch.optim.AdamW([x0], lr=.01, foreach=True)
@@ -279,7 +288,8 @@ def retrieve_(
                 x0,
                 gtol=grad_tolerance,
                 disp = display,
-                max_iter = tr_max_iter
+                max_iter = tr_max_iter,
+                return_all = return_each_iter
             )
         else:
             result = torchmin.bfgs._minimize_lbfgs(
@@ -290,23 +300,70 @@ def retrieve_(
                 disp = display
             )
         x_final = result.x
-    x0 = x_final.detach().clone()
-    x0.requires_grad_()
-    optimizer = torch.optim.AdamW([x0], lr=.01, foreach=True)
-    iterator = range(adam_iters)
-    if verbose and adam_iters > 1: iterator = tqdm(iterator, desc="Adam")
-    rand_mask = torch.rand_like(y)
-    for _ in iterator:
-        optimizer.zero_grad()
-        loss = masked_loss(torch.view_as_complex(x0), torch.sqrt(y), cost_reg, rand_mask, wind_1, wind_2 )
-        loss.backward()
+    x_final = x_final.detach().clone()
+    if return_each_iter:
+        iters_x = result.allvecs
+        for i, vec in enumerate(iters_x):
+            iters_x[i] = torch.view_as_complex_copy(x0.view(x_final.shape))
+        return (torch.view_as_complex_copy(x_final), iters_x)
 
-        if verbose and adam_iters > 1:
-            iterator.set_description(f"Adam (loss={loss}, grad={loss.grad})")
+    return torch.view_as_complex_copy(x_final)
+def refine(near_field_guess, far_field, support_roll, tight_mask, tight_support, winding, **kwargs):
+    device = kwargs.pop("device", None)
+    
+    if torch.cuda.is_available() and (device is not False):
+        if device is not None:
+            torch_device = device
+        else:
+            torch_device = torch.device('cuda')
+    else:
+        torch_device = torch.device('cpu')
 
-        optimizer.step()
-
-    x_final = x0.detach().clone()
+    near_field_torch = torch.from_numpy(near_field_guess)
+    far_field_torch = torch.from_numpy(far_field)
+    mask_torch = torch.from_numpy(tight_mask)
+    x_out = refine_(near_field_torch, far_field_torch, support_roll, mask_torch, tight_support, winding, **kwargs)
+    if isinstance(near_field_guess, torch.Tensor):
+        return x_out.detach().clone()
+    else:
+        return(x_out.numpy(force=True))
+    
+def refine_(near_field_guess, far_field, support_roll, tight_mask, tight_support, winding,
+            loss_func = None,
+            verbose = False,
+            tr_max_iter = 100,
+            use_trust_region = True,
+            grad_tolerance = 1e-3
+            ):
+    x0 = torch.roll(near_field_guess, support_roll, dims = (0,1))
+    x0 = x0[0:tight_support[0], 0:tight_support[1]]
+    x0 = torch.view_as_real_copy(x0*tight_mask)
+    if loss_func is None:
+        loss_func = SOS_loss2
+    def loss_lam_refine(x):
+            return SOS_loss2(tight_mask*torch.view_as_complex(x), torch.sqrt(far_field), 1, winding[0], winding[1])
+    if verbose:
+        display = 2
+    else:
+        display = 0
+    if use_trust_region:
+        result = torchmin.trustregion._minimize_trust_ncg(
+            loss_lam_refine,
+            x0,
+            gtol=grad_tolerance,
+            disp = display,
+            max_iter = tr_max_iter
+        )
+    else:
+        result = torchmin.bfgs._minimize_lbfgs(
+            loss_lam_refine,
+            x0,
+            gtol=grad_tolerance,
+            xtol = 1e-15,
+            disp = display
+        )
+    x_final = result.x
+    x_final=x_final.detach().clone()
     return torch.view_as_complex_copy(x_final)
 
 def bisection_winding_calc(shape, cepstrum, num_loops=100, verbose=False):
@@ -376,6 +433,13 @@ def bisection_winding_calc(shape, cepstrum, num_loops=100, verbose=False):
             break
 
     return (winding_num_1, winding_num_2)
+def oversample_y(y, oversample_ratio,support):
+    autocorr = torch.fft.ifft2(y)
+    autocorr = torch.roll(autocorr, (support[0]-1, support[1]-1), dims=(0, 1))
+    autocorr2 = torch.zeros((int(y.shape[0]*oversample_ratio), int(y.shape[1]*oversample_ratio)), dtype=torch.cdouble, device=y.device)
+    autocorr2[0:2*support[0], 0:2*support[1]] = autocorr[0:2*support[0], 0:2*support[1]]
+    autocorr2 = torch.roll(autocorr2, (-(support[0]-1), -(support[1]-1)), dims=(0, 1))
+    return torch.fft.fft2(autocorr2)/(oversample_ratio**2)
 def schwarz_transform(y, winding,oversample_ratio, support):
     autocorr = torch.fft.ifft2(y)
     autocorr = torch.roll(autocorr, (support[0]-1, support[1]-1), dims=(0, 1))
