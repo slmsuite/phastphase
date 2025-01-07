@@ -7,7 +7,7 @@ import warnings
 
 import numpy as np
 
-__version__ = '0.0.49'
+__version__ = '0.0.54'
 
 def retrieve(
         farfield_data,
@@ -304,7 +304,7 @@ def retrieve_(
     if return_each_iter:
         iters_x = result.allvecs
         for i, vec in enumerate(iters_x):
-            iters_x[i] = torch.view_as_complex_copy(x0.view(x_final.shape))
+            iters_x[i] = torch.view_as_complex_copy(vec.view(x_final.shape))
         return (torch.view_as_complex_copy(x_final), iters_x)
 
     return torch.view_as_complex_copy(x_final)
@@ -333,7 +333,8 @@ def refine_(near_field_guess, far_field, support_roll, tight_mask, tight_support
             verbose = False,
             tr_max_iter = 100,
             use_trust_region = True,
-            grad_tolerance = 1e-3
+            grad_tolerance = 1e-3,
+            init_trust_region = 1.0
             ):
     x0 = torch.roll(near_field_guess, support_roll, dims = (0,1))
     x0 = x0[0:tight_support[0], 0:tight_support[1]]
@@ -352,7 +353,9 @@ def refine_(near_field_guess, far_field, support_roll, tight_mask, tight_support
             x0,
             gtol=grad_tolerance,
             disp = display,
-            max_iter = tr_max_iter
+            max_iter = tr_max_iter,
+            initial_trust_radius = init_trust_region,
+            max_trust_radius = 1000*init_trust_region
         )
     else:
         result = torchmin.bfgs._minimize_lbfgs(
@@ -360,7 +363,8 @@ def refine_(near_field_guess, far_field, support_roll, tight_mask, tight_support
             x0,
             gtol=grad_tolerance,
             xtol = 1e-15,
-            disp = display
+            disp = display,
+            max_iter = tr_max_iter
         )
     x_final = result.x
     x_final=x_final.detach().clone()
