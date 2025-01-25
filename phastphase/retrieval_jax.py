@@ -42,10 +42,11 @@ def winding_calc(far_field_intensities, support_shape):
 def schwarz_transform(y, winding_tuple, min_log, support_shape):
     cepstrum = jnp.fft.ifft2(jnp.fmax(jnp.log(y), min_log))
     cep_mask = jnp.zeros_like(cepstrum)
-    cep_mask.at[0:y.shape[0]//2, 0:y.shape[1]//2].set(1)
-    cep_mask.at[0:2*winding_tuple[0]+1, 0:2*winding_tuple[1]+1].set(0.5)
+    cep_mask = cep_mask.at[0:y.shape[0]//2, 0:y.shape[1]//2].set(1)
+    cep_mask = cep_mask.at[0:2*winding_tuple[0], 0:2*winding_tuple[1]].set(0.5)
     rolled_mask = jnp.roll(cep_mask, (-winding_tuple[0], -winding_tuple[1]), (0,1))
-    x_cep = jnp.fft.ifft2(jnp.exp(jnp.fft.fft2(rolled_mask*cepstrum)))
+    
+    x_cep = jnp.fft.ifft2(jnp.exp(jnp.fft.fft2(rolled_mask*cepstrum)), norm='ortho')
     x_rolled = jnp.roll(x_cep, winding_tuple, (0,1))
     x_unphased = lax.slice(x_rolled, (0,0), support_shape )
     return x_unphased/jnp.sign(x_unphased[*winding_tuple])
@@ -86,7 +87,7 @@ def L2_mag_loss(x,
                 phase_ref_point,
                 phase_reg = 1.0):
     x_c = view_as_complex(x, shape)
-    return jnp.square(jnp.linalg.vector_norm(jnp.abs(jnp.fft.fft2(x_c,s=y.shape,norm='ortho'))-y)) + phase_reg*jnp.square(jnp.imag(x_c[*phase_ref_point])) 
+    return jnp.square(jnp.linalg.vector_norm(jnp.square(jnp.abs(jnp.fft.fft2(x_c,s=y.shape,norm='ortho')))/y-y))/8 + phase_reg*jnp.square(jnp.imag(x_c[*phase_ref_point]))/2 
 
 def masked_L2_mag_loss(x,
                 y,
@@ -95,5 +96,5 @@ def masked_L2_mag_loss(x,
                 phase_ref_point,
                 phase_reg = 1.0):
     x_c = mask*view_as_complex(x, shape)
-    return jnp.square(jnp.linalg.vector_norm(jnp.abs(jnp.fft.fft2(x_c,s=y.shape,norm='ortho'))-y)) + phase_reg*jnp.square(jnp.imag(x_c[*phase_ref_point])) 
+    return jnp.square(jnp.linalg.vector_norm(jnp.square(jnp.abs(jnp.fft.fft2(x_c,s=y.shape,norm='ortho')))/y-y))/8 + phase_reg*jnp.square(jnp.imag(x_c[*phase_ref_point]))/2 
 
