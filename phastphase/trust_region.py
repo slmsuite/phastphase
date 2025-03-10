@@ -40,19 +40,7 @@ class _TrustRegionResults(NamedTuple):
   trust_radius: Union[float, jnp.ndarray]
   status: Union[int, jnp.ndarray]
 
-
-def minimize_trust_region(
-    fun: Callable,
-    x0: jnp.ndarray,
-    maxiter: Optional[int] = None,
-    norm=jnp.inf,
-    gtol: float = 1e-5,
-    max_trust_radius: Union[float, jnp.ndarray] = 1000.,
-    initial_trust_radius: Union[float, jnp.ndarray] = 1.0,
-    eta: Union[float, jnp.ndarray] = 0.15,
-    method = "trust-ncg",
-) -> _TrustRegionResults:
-
+'''
   if not (0 <= eta < 0.25):
     raise Exception("invalid acceptance stringency")
   if gtol < 0.:
@@ -70,7 +58,21 @@ def minimize_trust_region(
     raise ValueError("Method {} not recognized".format(method))
   if maxiter is None:
     maxiter = jnp.size(x0) * 200
+'''
+def minimize_trust_region(
+    fun: Callable,
+    x0: jnp.ndarray,
+    maxiter: Optional[int] = None,
+    norm=jnp.inf,
+    gtol: float = 1e-5,
+    max_trust_radius: Union[float, jnp.ndarray] = 100000.,
+    initial_trust_radius: Union[float, jnp.ndarray] = 100.,
+    eta: Union[float, jnp.ndarray] = 0.15,
+    method = "trust-ncg",
+) -> _TrustRegionResults:
+  subp = CGSteihaugSubproblem
 
+  
   vg_f = value_and_grad(fun)
   g_f = grad(fun)
   f_0, g_0 = vg_f(x0)

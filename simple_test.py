@@ -1,4 +1,6 @@
 import jax
+jax.config.update('jax_enable_x64', True)
+
 import jax.numpy as jnp
 from jax import random
 import jax.lax as lax
@@ -22,4 +24,4 @@ shape = (256,256)
 x_out = retrieve(y, shape,max_iters=1000, grad_tolerance=1e-12, winding_guess=(1,1))
 
 
-print(jnp.linalg.vector_norm(x_out-x))
+print(jnp.linalg.vector_norm(x_out-x)/jnp.linalg.vector_norm(x))

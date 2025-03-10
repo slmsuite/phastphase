@@ -7,7 +7,7 @@ import warnings
 
 import numpy as np
 
-__version__ = '0.0.54'
+__version__ = '0.0.66'
 
 def retrieve(
         farfield_data,
